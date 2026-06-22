@@ -25,7 +25,7 @@
         
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px; pointer-events: auto; display: none; }
+        #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px; pointer-events: auto; display: none; z-index: 10 !important; }
 
         .clay-panel {
             background: #f4ecd8; border-radius: 20px; pointer-events: auto;
@@ -60,29 +60,17 @@
         }
         #error-log { color: #d32f2f; background: #ffebee; padding: 10px; border-radius: 8px; margin-top: 20px; font-family: monospace; text-align: left; max-width: 80%; display: none; pointer-events: auto; }
         
-        /* دکمه‌های سایز اکتیو */
         .size-btn.active {
             background-color: #000;
             color: #fff;
             border-color: #000;
         }
         
-        /* استایل اسکرول‌بار کاستوم برای پاپ‌آپ‌های ریسپانسیو */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #e5e7eb;
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background-color: #d1d5db;
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #d1d5db; }
 
-        /* افکت دکمه‌های اسلایدر */
         .slider-btn {
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(4px);
@@ -96,13 +84,8 @@
             transition: all 0.2s ease;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .group:hover .slider-btn {
-            opacity: 1;
-        }
-        .slider-btn:hover {
-            background: rgba(255, 255, 255, 0.95);
-            transform: scale(1.1);
-        }
+        .group:hover .slider-btn { opacity: 1; }
+        .slider-btn:hover { background: rgba(255, 255, 255, 0.95); transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -128,7 +111,7 @@
         <!-- Cart & Amount -->
         <div class="absolute top-5 right-5 flex items-center gap-4 pointer-events-auto">
             <span id="hud-amount" class="font-bold text-sm text-gray-800 tracking-wider">amount: $0</span>
-            <div class="relative cursor-pointer hover:scale-105 transition-transform" onclick="alert('Cart opened! (To be implemented)')">
+            <div class="relative cursor-pointer hover:scale-105 transition-transform" onclick="alert('Cart opened!')">
                 <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-md">
                     <svg class="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 </div>
@@ -139,7 +122,6 @@
         <!-- Logos / Links -->
         <img src="cartblaze.png" class="absolute bottom-5 right-5 w-32 pointer-events-none opacity-90 drop-shadow-md" alt="Cart Blaze" onerror="this.style.display='none'">
         <div class="absolute bottom-5 left-5 font-semibold text-gray-100 drop-shadow-md pointer-events-none tracking-wider text-sm">cartblaze.store</div>
-
 
         <div id="joystick-zone"></div>
         <div id="modal-backdrop"></div>
@@ -153,13 +135,14 @@
         <div id="shopping-modal" class="modern-modal flex-col p-4 md:p-8 w-[95%] max-w-[900px] max-h-[90vh]">
             
             <!-- Store Header & Amount -->
-            <div class="flex justify-between items-center mb-4 w-full border-b border-gray-100 pb-3">
+            <div class="flex justify-between items-center mb-4 w-full border-b border-gray-100 pb-3 shrink-0">
                 <img src="store.png" alt="Store" class="h-14 md:h-20 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                 <h2 class="text-3xl font-black italic tracking-widest text-gray-800 hidden" style="font-family: impact, sans-serif;">STORE</h2>
                 <span id="modal-amount" class="font-bold text-sm md:text-lg text-gray-800 tracking-wider">amount: $0</span>
             </div>
             
-            <div id="dynamic-products-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full place-items-center overflow-y-auto pb-2 custom-scrollbar justify-center">
+            <!-- محصولات با چیدمان فلکس برای تطابق خودکار -->
+            <div id="dynamic-products-container" class="flex flex-wrap justify-center gap-6 w-full overflow-y-auto pb-2 custom-scrollbar">
                 <!-- محصولات اینجا لود می‌شوند -->
             </div>
 
@@ -188,7 +171,7 @@
 
     <script>
         // ==========================================
-        // سیستم پویا محصولات (آرایه اطلاعات لباس‌ها)
+        // سیستم پویا محصولات 
         // ==========================================
         const storeProducts = [
             { 
@@ -204,8 +187,9 @@
         ];
 
         let currentImageIndexes = {};
+        let isTransitioning = {};
         let tempQuantities = {};
-        let currentSizes = {}; // اضافه شدن متغیر برای ذخیره سایز فعال
+        let currentSizes = {}; 
         let totalCartAmount = 0;
         let totalCartItems = 0;
 
@@ -214,39 +198,47 @@
             container.innerHTML = '';
             
             storeProducts.forEach(p => {
-                // حالا به جای یک عدد، یک آبجکت برای ذخیره تعداد هر سایز داریم
                 tempQuantities[p.id] = { 'M': 0, 'L': 0, 'XL': 0 }; 
-                currentSizes[p.id] = 'M'; // سایز پیش‌فرض
-                currentImageIndexes[p.id] = 0; 
+                currentSizes[p.id] = 'M';
+                currentImageIndexes[p.id] = 1; // شروع از عکس اصلی (ایندکس بصری 1)
+                isTransitioning[p.id] = false;
                 
-                const imagesArrayStr = JSON.stringify(p.images).replace(/"/g, "'");
+                const len = p.images.length;
+                
+                // --- تولید کدهای اسلایدر بی‌نهایت ---
+                let sliderContent = '';
+                if (len > 1) {
+                    const firstImg = p.images[0];
+                    const lastImg = p.images[len - 1];
+                    // اضافه کردن کلون عکس آخر در ابتدا، و کلون عکس اول در انتها
+                    sliderContent = `
+                        <div class="w-full h-full shrink-0 relative bg-gray-100"><img src="${lastImg}" class="w-full h-full object-cover"></div>
+                        ${p.images.map(img => `<div class="w-full h-full shrink-0 relative bg-gray-100"><img src="${img}" class="w-full h-full object-cover"></div>`).join('')}
+                        <div class="w-full h-full shrink-0 relative bg-gray-100"><img src="${firstImg}" class="w-full h-full object-cover"></div>
+                    `;
+                } else {
+                    sliderContent = `<div class="w-full h-full shrink-0 relative bg-gray-100"><img src="${p.images[0]}" class="w-full h-full object-cover"></div>`;
+                }
 
                 const productHTML = `
-                    <div class="flex flex-col items-center w-full max-w-[260px] mx-auto">
-                        <!-- کادر تصویر با تکنیک Cross-Fade لایه‌ای -->
+                    <div class="flex flex-col items-center w-full max-w-[260px]">
+                        <!-- کادر تصویر با افکت اسلاید بی‌نهایت -->
                         <div class="w-full aspect-square bg-white border border-gray-100 rounded-2xl flex items-center justify-center overflow-hidden shadow-sm hover:shadow-lg transition-all relative group cursor-pointer"
-                             onmouseenter="changeImageSmoothly(${p.id}, '${p.images[1] || p.images[0]}')"
-                             onmouseleave="resetSlider(${p.id}, ${imagesArrayStr})">
+                             onmouseenter="hoverSlider(${p.id}, ${len})"
+                             onmouseleave="resetSlider(${p.id}, ${len})">
                             
-                            <!-- لایه زیرین: عکس فعلی را نگه می‌دارد تا موقع فید شدن سفیدی نزند -->
-                            <img id="product-img-${p.id}-back" src="${p.images[0]}" 
-                                 class="absolute inset-0 w-full h-full object-cover">
+                            <!-- نوار اسلایدر -->
+                            <div id="slider-track-${p.id}" class="flex w-full h-full transition-transform duration-300 ease-in-out" style="transform: translateX(${len > 1 ? '-100%' : '0%'});">
+                                ${sliderContent}
+                            </div>
                             
-                            <!-- لایه رویی: عکس جدید نرم ظاهر می‌شود -->
-                            <img id="product-img-${p.id}-front" src="${p.images[0]}" 
-                                 class="absolute inset-0 w-full h-full object-cover transition-opacity duration-300 z-10"
-                                 onerror="handleImageError(this, ${p.id})"
-                                 alt="Tshirt ${p.id}">
-                                 
-                            <span id="error-span-${p.id}" class="text-gray-400 text-xs font-bold hidden absolute z-20 pointer-events-none">Img Not Found</span>
-
                             <!-- دکمه چپ -->
-                            <div class="absolute left-2 slider-btn z-30" onclick="slideImage(event, ${p.id}, -1, ${imagesArrayStr})">
+                            <div class="absolute left-2 top-1/2 -translate-y-1/2 slider-btn z-30 ${len > 1 ? 'flex' : 'hidden'}" onclick="slideImage(event, ${p.id}, -1, ${len})">
                                 <svg class="w-4 h-4 text-gray-600 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                             </div>
                             
                             <!-- دکمه راست -->
-                            <div class="absolute right-2 slider-btn z-30" onclick="slideImage(event, ${p.id}, 1, ${imagesArrayStr})">
+                            <div class="absolute right-2 top-1/2 -translate-y-1/2 slider-btn z-30 ${len > 1 ? 'flex' : 'hidden'}" onclick="slideImage(event, ${p.id}, 1, ${len})">
                                 <svg class="w-4 h-4 text-gray-600 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                             </div>
                         </div>
@@ -259,7 +251,6 @@
                                     ${['M', 'L', 'XL'].map(size => `
                                         <div class="relative flex items-center justify-center">
                                             <button id="btn-size-${p.id}-${size}" class="size-btn ${size === 'M' ? 'active bg-black text-white' : 'bg-white text-black'} w-6 h-6 md:w-7 md:h-7 rounded-full border border-gray-300 text-[10px] md:text-xs font-semibold hover:bg-black hover:text-white transition-colors flex items-center justify-center" onclick="selectSize(${p.id}, '${size}')">${size}</button>
-                                            <!-- بج اعلان روی دکمه (Badge) -->
                                             <span id="badge-${p.id}-${size}" class="absolute -top-1.5 -right-1.5 bg-green-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center scale-0 transition-transform duration-200">0</span>
                                         </div>
                                     `).join('')}
@@ -275,74 +266,68 @@
                 `;
                 container.innerHTML += productHTML;
             });
+            // باکس‌های خاکستری به طور کامل حذف شدند
+        }
 
-            const emptyBoxesCount = Math.max(0, 6 - storeProducts.length);
-            for(let i = 0; i < emptyBoxesCount; i++) {
-                const emptyHTML = `
-                    <div class="w-full max-w-[260px] aspect-square bg-[#b5c7c8] rounded-2xl shadow-inner opacity-60 hidden md:block"></div>
-                `;
-                container.innerHTML += emptyHTML;
+        // --- توابع اسلایدر بی‌نهایت (Infinite Slider) ---
+        function slideImage(event, productId, direction, len) {
+            event.stopPropagation();
+            if (len <= 1 || isTransitioning[productId]) return;
+
+            let visualIndex = currentImageIndexes[productId];
+            visualIndex += direction;
+            
+            currentImageIndexes[productId] = visualIndex;
+            const track = document.getElementById(`slider-track-${productId}`);
+            
+            if (track) {
+                track.style.transition = 'transform 300ms ease-in-out';
+                track.style.transform = `translateX(-${visualIndex * 100}%)`;
+                isTransitioning[productId] = true;
+                
+                // منطق حلقه بی‌نهایت (جا‌به‌جایی نامرئی به کلون‌ها)
+                if (visualIndex === 0) {
+                    setTimeout(() => {
+                        currentImageIndexes[productId] = len;
+                        track.style.transition = 'none';
+                        track.style.transform = `translateX(-${len * 100}%)`;
+                        isTransitioning[productId] = false;
+                    }, 300);
+                } else if (visualIndex === len + 1) {
+                    setTimeout(() => {
+                        currentImageIndexes[productId] = 1;
+                        track.style.transition = 'none';
+                        track.style.transform = `translateX(-100%)`;
+                        isTransitioning[productId] = false;
+                    }, 300);
+                } else {
+                    setTimeout(() => { isTransitioning[productId] = false; }, 300);
+                }
             }
         }
 
-        // --- تکنیک جدید Cross-Fade (فید شدن متقاطع بدون سفیدی) ---
-        function changeImageSmoothly(productId, newSrc) {
-            const frontImg = document.getElementById(`product-img-${productId}-front`);
-            const backImg = document.getElementById(`product-img-${productId}-back`);
-            const span = document.getElementById(`error-span-${productId}`);
-            
-            if (!frontImg || !backImg) return;
-            if (frontImg.getAttribute('src') === newSrc && frontImg.style.display !== 'none') return;
-
-            // عکس قبلی را در لایه پشتی قرار می‌دهیم
-            backImg.src = frontImg.src;
-
-            // لایه جلویی را بدون انیمیشن موقتاً محو می‌کنیم
-            frontImg.style.transition = 'none';
-            frontImg.style.opacity = 0;
-            
-            // فورس کردن رفرش استایل برای مرورگر
-            void frontImg.offsetWidth;
-
-            // اضافه کردن دوباره انیمیشن و تغییر آدرس عکس رویی
-            frontImg.style.transition = 'opacity 300ms ease-in-out';
-            frontImg.src = newSrc;
-            
-            frontImg.onload = () => {
-                frontImg.style.display = 'block';
-                if (span) span.style.display = 'none';
-                frontImg.style.opacity = 1; // فید شدن نرم از روی عکس قبلی
-            };
-            
-            // مکانیزم بک‌آپ
-            setTimeout(() => { frontImg.style.opacity = 1; }, 50);
+        function hoverSlider(productId, len) {
+            if (len > 1 && currentImageIndexes[productId] === 1 && !isTransitioning[productId]) {
+                currentImageIndexes[productId] = 2;
+                const track = document.getElementById(`slider-track-${productId}`);
+                if (track) {
+                    track.style.transition = 'transform 300ms ease-in-out';
+                    track.style.transform = `translateX(-200%)`;
+                }
+            }
         }
 
-        function handleImageError(imgElement, productId) {
-            imgElement.style.display = 'none';
-            const span = document.getElementById(`error-span-${productId}`);
-            if (span) span.style.display = 'block';
+        function resetSlider(productId, len) {
+            if (len > 1 && !isTransitioning[productId]) {
+                currentImageIndexes[productId] = 1;
+                const track = document.getElementById(`slider-track-${productId}`);
+                if (track) {
+                    track.style.transition = 'transform 300ms ease-in-out';
+                    track.style.transform = `translateX(-100%)`;
+                }
+            }
         }
 
-        function slideImage(event, productId, direction, imagesArray) {
-            event.stopPropagation(); 
-            
-            let currentIndex = currentImageIndexes[productId];
-            currentIndex += direction;
-            
-            if (currentIndex < 0) currentIndex = imagesArray.length - 1;
-            if (currentIndex >= imagesArray.length) currentIndex = 0;
-            
-            currentImageIndexes[productId] = currentIndex;
-            changeImageSmoothly(productId, imagesArray[currentIndex]);
-        }
-
-        function resetSlider(productId, imagesArray) {
-            currentImageIndexes[productId] = 0;
-            changeImageSmoothly(productId, imagesArray[0]);
-        }
-
-        // تابع انتخاب سایز هوشمند
         function selectSize(productId, size) {
             currentSizes[productId] = size;
             
@@ -357,14 +342,12 @@
                 }
             });
 
-            // آپدیت کردن عدد کنترلگر وسط (+ و -) بر اساس سایز جدید
             document.getElementById(`qty-${productId}`).innerText = tempQuantities[productId][size];
         }
 
         function updateModalAmountLive() {
             let tempTotal = 0;
             storeProducts.forEach(p => {
-                // جمع کردن تمام سایزهای یک تیشرت
                 const totalProductQty = tempQuantities[p.id].M + tempQuantities[p.id].L + tempQuantities[p.id].XL;
                 tempTotal += totalProductQty * p.price;
             });
@@ -377,13 +360,9 @@
             let newQty = tempQuantities[productId][activeSize] + delta;
             if (newQty < 0) newQty = 0;
             
-            // ذخیره تعداد برای همان سایز خاص
             tempQuantities[productId][activeSize] = newQty;
-            
-            // آپدیت کنترلگر
             document.getElementById(`qty-${productId}`).innerText = newQty;
             
-            // آپدیت بج (Badge) سبز رنگ روی دکمه سایز
             const badge = document.getElementById(`badge-${productId}-${activeSize}`);
             if (badge) {
                 badge.innerText = newQty;
@@ -427,7 +406,8 @@
         
         let mixers = [];
         const velocity = new THREE.Vector3();
-        const speed = 0.2;
+        const speed = 0.2; 
+        
         const keys = { up: false, left: false, down: false, right: false };
         let joystickMove = { x: 0, y: 0 };
         
@@ -702,7 +682,6 @@
                 modalBackdrop.style.display = 'none'; 
                 isModalOpen = false; 
                 storeProducts.forEach(p => {
-                    // ریست کردن تمام مقادیر و بج‌ها در صورت انصراف
                     tempQuantities[p.id] = { 'M': 0, 'L': 0, 'XL': 0 };
                     document.getElementById(`qty-${p.id}`).innerText = 0;
                     
@@ -714,7 +693,7 @@
                         }
                     });
                     
-                    resetSlider(p.id, p.images);
+                    resetSlider(p.id, p.images.length);
                 });
                 checkInteraction(); 
             });
@@ -728,7 +707,6 @@
                         totalCartAmount += totalProductQty * p.price;
                         totalCartItems += totalProductQty;
                         
-                        // ریست کردن مقادیر
                         tempQuantities[p.id] = { 'M': 0, 'L': 0, 'XL': 0 }; 
                         document.getElementById(`qty-${p.id}`).innerText = '0';
                         
@@ -740,7 +718,7 @@
                             }
                         });
                         
-                        resetSlider(p.id, p.images);
+                        resetSlider(p.id, p.images.length);
                         addedAny = true;
                     }
                 });
@@ -794,7 +772,7 @@
             requestAnimationFrame(animate);
             if (!cartGroup) return; 
 
-            const dt = clock.getDelta();
+            const dt = Math.min(clock.getDelta(), 0.1); 
             
             for (const mixer of mixers) {
                 mixer.update(dt);
@@ -829,11 +807,14 @@
                     let diff = targetAngle - cartGroup.rotation.y;
                     while (diff < -Math.PI) diff += Math.PI * 2;
                     while (diff > Math.PI) diff -= Math.PI * 2;
-                    cartGroup.rotation.y += diff * 0.1;
+                    
+                    cartGroup.rotation.y += diff * 10.0 * dt; 
                 }
 
-                const nextX = cartGroup.position.x + moveX * speed;
-                const nextZ = cartGroup.position.z + moveZ * speed;
+                const currentSpeed = speed * dt * 60;
+                const nextX = cartGroup.position.x + moveX * currentSpeed;
+                const nextZ = cartGroup.position.z + moveZ * currentSpeed;
+                
                 if (nextX > -3.5 && nextX < 3.5) cartGroup.position.x = nextX;
                 if (nextZ > -26 && nextZ < 12) cartGroup.position.z = nextZ;
                 
@@ -848,7 +829,8 @@
 
             const cameraOffset = new THREE.Vector3(15, 5, 5); 
             const targetPos = cartGroup.position.clone().add(cameraOffset);
-            camera.position.lerp(targetPos, 0.05);
+            
+            camera.position.lerp(targetPos, Math.min(5.0 * dt, 1.0));
             camera.lookAt(cartGroup.position);
 
             checkInteraction();
