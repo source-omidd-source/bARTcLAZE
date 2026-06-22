@@ -90,10 +90,10 @@
     <!-- صفحه لودینگ جدید هوشمند و فوق‌مینیمال -->
     <div id="intro-screen" class="absolute inset-0 z-[9999] bg-[#050505] overflow-hidden transition-opacity duration-1000 pointer-events-auto">
         
-        <!-- اضافه شدن ID و opacity-0 برای انیمیشن فید شدن بک‌گراند -->
+        <!-- عکس بک‌گراند با کراپ خودکار، بلور ۱ پیکسلی و کاهش نور -->
         <div id="intro-bg" class="absolute inset-0 z-0 bg-[url('BG.jpg')] bg-cover bg-center filter blur-[1px] brightness-75 scale-105 opacity-0 transition-opacity duration-1000"></div>
         
-        <!-- اضافه شدن opacity-0 و translate-y-6 برای افکت بالا آمدن دکمه -->
+        <!-- رابط کاربری START -->
         <div id="start-ui-container" class="absolute left-0 right-0 z-10 flex flex-col items-center justify-center w-full pointer-events-none transition-all duration-1000 opacity-0 translate-y-6">
             
             <!-- دکمه استارت تصویری -->
@@ -190,11 +190,10 @@
         // ==========================================
         // تنظیمات عکس دکمه استارت (start.png)
         // ==========================================
-        const START_IMAGE_WIDTH = 320;       // عرض عکس استارت به پیکسل
-        const START_IMAGE_BOTTOM = 15;       // فاصله دکمه از پایین صفحه به درصد (مثلاً 15 یعنی 15% از پایین)
-        const START_IMAGE_HOVER_SCALE = 1.1; // میزان بزرگ‌نمایی با رفتن موس روی دکمه (مثلاً 1.1)
+        const START_IMAGE_WIDTH = 320;       // عرض عکس استارت به پیکسل (طبق درخواست تغییر کرد)
+        const START_IMAGE_BOTTOM = 15;       // فاصله دکمه از پایین صفحه به درصد
+        const START_IMAGE_HOVER_SCALE = 1.05;// میزان بزرگ‌نمایی ملایم با رفتن موس روی دکمه
 
-        // اعمال تنظیمات دکمه استارت به محض خوانده شدن کد (بدون تاخیر)
         function applyStartSettings() {
             const container = document.getElementById('start-ui-container');
             const btn = document.getElementById('btn-start-experience');
@@ -203,13 +202,13 @@
             }
             if (btn) {
                 btn.style.width = START_IMAGE_WIDTH + 'px';
-                btn.style.height = 'auto'; // برای حفظ تناسب طول و عرض
+                btn.style.height = 'auto'; 
                 btn.onmouseenter = () => { if(!isStartClicked) btn.style.transform = `scale(${START_IMAGE_HOVER_SCALE})`; };
                 btn.onmouseleave = () => { if(!isStartClicked) btn.style.transform = 'scale(1)'; };
             }
         }
         
-        // سیستم جدید: منتظر ماندن برای لود عکس بک‌گراند
+        // سیستم لود پس‌زمینه
         function preloadIntroAssets() {
             const bgImg = new Image();
             bgImg.src = 'BG.jpg';
@@ -218,10 +217,7 @@
             const startUI = document.getElementById('start-ui-container');
 
             const revealUI = () => {
-                // اول بک‌گراند به نرمی فید می‌شود
                 if (introBg) introBg.classList.remove('opacity-0');
-                
-                // نیم ثانیه بعد، دکمه استارت با یه انیمیشن ملایم میاد بالا
                 setTimeout(() => {
                     if (startUI) {
                         startUI.classList.remove('opacity-0', 'translate-y-6');
@@ -230,7 +226,7 @@
             };
 
             bgImg.onload = revealUI;
-            bgImg.onerror = revealUI; // اگر عکس پیدا نشد هم دکمه رو نشون بده
+            bgImg.onerror = revealUI; 
         }
 
         applyStartSettings(); 
@@ -265,7 +261,7 @@
             const intro = document.getElementById('intro-screen');
             if(intro) {
                 intro.style.opacity = '0';
-                setTimeout(() => { intro.style.display = 'none'; }, 1000); // 1 ثانیه ترانزیشن محو شدن
+                setTimeout(() => { intro.style.display = 'none'; }, 1000); 
             }
         }
 
@@ -304,7 +300,6 @@
                 
                 const len = p.images.length;
                 
-                // تولید کدهای اسلایدر بی‌نهایت
                 let sliderContent = '';
                 if (len > 1) {
                     const firstImg = p.images[0];
@@ -364,7 +359,7 @@
             });
         }
 
-        // --- توابع اسلایدر بی‌نهایت (Infinite Slider) ---
+        // --- توابع اسلایدر بی‌نهایت ---
         function slideImage(event, productId, direction, len) {
             event.stopPropagation();
             if (len <= 1 || isTransitioning[productId]) return;
@@ -380,7 +375,6 @@
                 track.style.transform = `translateX(-${visualIndex * 100}%)`;
                 isTransitioning[productId] = true;
                 
-                // منطق حلقه بی‌نهایت 
                 if (visualIndex === 0) {
                     setTimeout(() => {
                         currentImageIndexes[productId] = len;
@@ -494,6 +488,7 @@
 
         let scene, camera, renderer, cartGroup, normalCartModel, fireCartModel, fireLight;
         let clothingRack, posMachine;
+        let obstacleBoxes = []; // آرایه برای ذخیره باوندرینگ باکس موانع جهت سیستم تصادف
         let isFiery = false;
         
         let fireFrames = [], currentFireFrame = 0, fireFrameTimer = 0;
@@ -501,7 +496,6 @@
         
         let mixers = [];
         const velocity = new THREE.Vector3();
-        const speed = 0.2; 
         
         const keys = { up: false, left: false, down: false, right: false };
         let joystickMove = { x: 0, y: 0 };
@@ -600,10 +594,21 @@
 
             const treePositions = [[-10, -5], [-12, -15], [10, -10], [12, 5], [-8, 15]];
             treePositions.forEach(pos => {
+                const treeGroup = new THREE.Group();
                 const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 2, 8), getClayMaterial(0x6e4e32));
-                trunk.position.set(pos[0], 1, pos[1]); trunk.castShadow = true; scene.add(trunk);
+                trunk.position.set(0, 1, 0); trunk.castShadow = true; treeGroup.add(trunk);
                 const leaves = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), getClayMaterial(0x4a7a3e));
-                leaves.position.set(pos[0], 2.5, pos[1]); leaves.castShadow = true; scene.add(leaves);
+                leaves.position.set(0, 2.5, 0); leaves.castShadow = true; treeGroup.add(leaves);
+                
+                treeGroup.position.set(pos[0], 0, pos[1]);
+                scene.add(treeGroup);
+
+                // ایجاد باکس تصادف برای درخت‌ها (کمی کوچکتر تا به برگ‌ها گیر نکند)
+                treeGroup.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(treeGroup);
+                box.min.x += 0.8; box.max.x -= 0.8;
+                box.min.z += 0.8; box.max.z -= 0.8;
+                obstacleBoxes.push(box);
             });
 
             clothingRack = new THREE.Group();
@@ -623,15 +628,25 @@
             };
 
             clothingRack.add(createShirt(0xffffff, -1)); clothingRack.add(createShirt(0x222222, 0)); clothingRack.add(createShirt(0xffffff, 1));
-            clothingRack.rotation.y = Math.PI / 2; clothingRack.position.set(-3.5, 0, -8);
+            clothingRack.rotation.y = Math.PI / 2; 
+            clothingRack.position.set(-3.5, 0, -8);
             scene.add(clothingRack);
+
+            // ایجاد باکس تصادف برای رگال لباس
+            clothingRack.updateMatrixWorld(true);
+            obstacleBoxes.push(new THREE.Box3().setFromObject(clothingRack));
 
             posMachine = new THREE.Group();
             const posBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 2, 8), getClayMaterial(0x555555)); posBase.position.y = 1;
             const posDevice = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), getClayMaterial(0x333333)); posDevice.position.set(0, 2.2, 0); posDevice.rotation.x = -Math.PI / 4;
             const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshBasicMaterial({ color: 0x88ccff })); screen.position.set(0, 0.1, 0.26); 
-            posDevice.add(screen); posMachine.add(posBase, posDevice); posMachine.position.set(3.5, 0, -22);
+            posDevice.add(screen); posMachine.add(posBase, posDevice); 
+            posMachine.position.set(3.5, 0, -22);
             scene.add(posMachine);
+
+            // ایجاد باکس تصادف برای دستگاه POS
+            posMachine.updateMatrixWorld(true);
+            obstacleBoxes.push(new THREE.Box3().setFromObject(posMachine));
         }
 
         function fitModelToCart(model) {
@@ -766,7 +781,6 @@
             if(btnStart) {
                 btnStart.addEventListener('click', () => {
                     isStartClicked = true;
-                    // افکت محو شدن دکمه استارت
                     btnStart.style.opacity = '0';
                     setTimeout(() => btnStart.style.display = 'none', 300);
                     
@@ -911,10 +925,12 @@
                 if (keys.left) moveX -= 1; if (keys.right) moveX += 1;
                 if (joystickMove.x !== 0 || joystickMove.y !== 0) { moveX = joystickMove.x; moveZ = -joystickMove.y; }
 
+                // چرخش هوشمند به سمت زاویه حرکت
                 if (moveX !== 0 || moveZ !== 0) {
                     const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
-                    moveX /= length; moveZ /= length;
-                    const targetAngle = Math.atan2(moveX, moveZ) + Math.PI;
+                    const dirX = moveX / length;
+                    const dirZ = moveZ / length;
+                    const targetAngle = Math.atan2(dirX, dirZ) + Math.PI;
                     let diff = targetAngle - cartGroup.rotation.y;
                     while (diff < -Math.PI) diff += Math.PI * 2;
                     while (diff > Math.PI) diff -= Math.PI * 2;
@@ -922,19 +938,68 @@
                     cartGroup.rotation.y += diff * 10.0 * dt; 
                 }
 
-                const currentSpeed = speed * dt * 60;
-                const nextX = cartGroup.position.x + moveX * currentSpeed;
-                const nextZ = cartGroup.position.z + moveZ * currentSpeed;
+                // --- سیستم فیزیک شتاب‌دار (Momentum & Friction) ---
+                const CART_ACCEL = 50.0;
+                const CART_FRICTION = 5.0;
+
+                // اعمال شتاب
+                velocity.x += moveX * CART_ACCEL * dt;
+                velocity.z += moveZ * CART_ACCEL * dt;
+
+                // اعمال اصطکاک مستمر
+                velocity.x -= velocity.x * CART_FRICTION * dt;
+                velocity.z -= velocity.z * CART_FRICTION * dt;
+
+                // توقف کامل (برای جلوگیری از لغزش بی‌نهایت)
+                if (Math.abs(velocity.x) < 0.1 && moveX === 0) velocity.x = 0;
+                if (Math.abs(velocity.z) < 0.1 && moveZ === 0) velocity.z = 0;
+
+                // --- سیستم برخورد هوشمند با موانع (Collision Detection) ---
+                const cartRadius = 0.8; // شعاع فرضی سبد برای برخورد
                 
-                if (nextX > -3.5 && nextX < 3.5) cartGroup.position.x = nextX;
-                if (nextZ > -26 && nextZ < 12) cartGroup.position.z = nextZ;
+                // تست برخورد در محور X
+                const testPosX = cartGroup.position.x + velocity.x * dt;
+                const cartBoxX = new THREE.Box3(
+                    new THREE.Vector3(testPosX - cartRadius, 0, cartGroup.position.z - cartRadius),
+                    new THREE.Vector3(testPosX + cartRadius, 2, cartGroup.position.z + cartRadius)
+                );
+                let colX = false;
+                for(let box of obstacleBoxes) {
+                    if (cartBoxX.intersectsBox(box)) { colX = true; break; }
+                }
+                if (testPosX < -10 || testPosX > 10) colX = true; // دیوارهای نامرئی محیط
                 
-                if (moveX !== 0 || moveZ !== 0) {
+                if (colX) velocity.x = 0; // در صورت برخورد ترمز می‌کند
+                else cartGroup.position.x = testPosX;
+
+                // تست برخورد در محور Z
+                const testPosZ = cartGroup.position.z + velocity.z * dt;
+                const cartBoxZ = new THREE.Box3(
+                    new THREE.Vector3(cartGroup.position.x - cartRadius, 0, testPosZ - cartRadius),
+                    new THREE.Vector3(cartGroup.position.x + cartRadius, 2, testPosZ + cartRadius)
+                );
+                let colZ = false;
+                for(let box of obstacleBoxes) {
+                    if (cartBoxZ.intersectsBox(box)) { colZ = true; break; }
+                }
+                if (testPosZ < -30 || testPosZ > 15) colZ = true; // دیوارهای نامرئی محیط
+                
+                if (colZ) velocity.z = 0;
+                else cartGroup.position.z = testPosZ;
+                // -----------------------------------------------------------
+
+                const isSpeeding = velocity.lengthSq() > 0.5;
+                if (isSpeeding) {
                     if (!isMoving) { cartSqueakAudio.play().catch(e => {}); isMoving = true; }
                 } else {
                     if (isMoving) { cartSqueakAudio.pause(); isMoving = false; }
                 }
             } else {
+                // اگر منو باز باشد سبد به نرمی می‌ایستد
+                velocity.x -= velocity.x * 10.0 * dt;
+                velocity.z -= velocity.z * 10.0 * dt;
+                cartGroup.position.x += velocity.x * dt;
+                cartGroup.position.z += velocity.z * dt;
                 if (isMoving) { cartSqueakAudio.pause(); isMoving = false; }
             }
 
