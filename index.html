@@ -25,6 +25,8 @@
         
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        
+        /* جوی‌استیک را به زیر پاپ‌آپ می‌فرستیم */
         #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px; pointer-events: auto; display: none; z-index: 10 !important; }
 
         .clay-panel {
@@ -53,12 +55,7 @@
         #modal-backdrop { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 40; display: none; pointer-events: auto; }
         #interaction-prompt { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; text-align: center; }
 
-        #loading-screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #87CEEB; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-family: sans-serif; color: #333; pointer-events: none; transition: opacity 0.5s;
-        }
-        #error-log { color: #d32f2f; background: #ffebee; padding: 10px; border-radius: 8px; margin-top: 20px; font-family: monospace; text-align: left; max-width: 80%; display: none; pointer-events: auto; }
+        #error-log { color: #d32f2f; background: #ffebee; padding: 10px; border-radius: 8px; margin-top: 20px; font-family: monospace; text-align: left; max-width: 80%; display: none; pointer-events: auto; z-index: 99999; position: relative; }
         
         .size-btn.active {
             background-color: #000;
@@ -90,10 +87,30 @@
 </head>
 <body>
 
-    <div id="loading-screen">
-        <h1 class="text-3xl font-bold mb-4">Loading 3D Engine...</h1>
-        <p>در حال استخراج و بارگذاری مدل‌های فشرده (Draco)</p>
-        <div id="error-log"></div>
+    <!-- صفحه لودینگ جدید هوشمند و فوق‌مینیمال -->
+    <div id="intro-screen" class="absolute inset-0 z-[9999] bg-[#050505] overflow-hidden transition-opacity duration-1000 pointer-events-auto">
+        
+        <!-- عکس بک‌گراند با کراپ خودکار، بلور ۱ پیکسلی و کاهش نور -->
+        <div class="absolute inset-0 z-0 bg-[url('BG.jpg')] bg-cover bg-center filter blur-[1px] brightness-75 scale-105"></div>
+        
+        <!-- رابط کاربری START -->
+        <div id="start-ui-container" class="absolute left-0 right-0 z-10 flex flex-col items-center justify-center w-full pointer-events-none transition-all duration-300">
+            
+            <!-- دکمه استارت تصویری -->
+            <img id="btn-start-experience" src="start.png" alt="Start" 
+                 class="cursor-pointer transition-transform duration-300 drop-shadow-lg pointer-events-auto"
+                 onerror="this.src=''; this.alt='START'; this.className='text-white/80 hover:text-white text-sm font-light tracking-[0.4em] uppercase transition-all duration-300 cursor-pointer drop-shadow-md pb-1 border-b border-transparent hover:border-white/50 pointer-events-auto';">
+            
+            <!-- نوار پیشرفت (فوق‌العاده نازک و مینیمال) -->
+            <div id="loading-container" class="hidden flex-col items-center gap-3 w-40 pointer-events-none mt-6">
+                <div class="text-white/70 text-[9px] font-light tracking-[0.2em] uppercase">Loading...</div>
+                <div class="w-full h-[1px] bg-white/20 overflow-hidden rounded-full">
+                    <div id="loading-bar-fill" class="h-full bg-white/90 w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-log" class="absolute top-5 left-5 z-20 text-red-500 bg-white/90 p-4 rounded-lg text-xs font-mono hidden"></div>
     </div>
 
     <div id="canvas-container"></div>
@@ -141,7 +158,7 @@
                 <span id="modal-amount" class="font-bold text-sm md:text-lg text-gray-800 tracking-wider">amount: $0</span>
             </div>
             
-            <!-- محصولات با چیدمان فلکس برای تطابق خودکار -->
+            <!-- محصولات با چیدمان فلکس -->
             <div id="dynamic-products-container" class="flex flex-wrap justify-center gap-6 w-full overflow-y-auto pb-2 custom-scrollbar">
                 <!-- محصولات اینجا لود می‌شوند -->
             </div>
@@ -170,6 +187,62 @@
     </div>
 
     <script>
+        // ==========================================
+        // تنظیمات عکس دکمه استارت (start.png)
+        // ==========================================
+        const START_IMAGE_WIDTH = 320;       // عرض عکس استارت به پیکسل
+        const START_IMAGE_BOTTOM = 15;       // فاصله دکمه از پایین صفحه به درصد (مثلاً 15 یعنی 15% از پایین)
+        const START_IMAGE_HOVER_SCALE = 1.1; // میزان بزرگ‌نمایی با رفتن موس روی دکمه (مثلاً 1.1)
+
+        // اعمال تنظیمات دکمه استارت به محض خوانده شدن کد (بدون تاخیر)
+        function applyStartSettings() {
+            const container = document.getElementById('start-ui-container');
+            const btn = document.getElementById('btn-start-experience');
+            if (container) {
+                container.style.bottom = START_IMAGE_BOTTOM + '%';
+            }
+            if (btn) {
+                btn.style.width = START_IMAGE_WIDTH + 'px';
+                btn.style.height = 'auto'; // برای حفظ تناسب طول و عرض
+                btn.onmouseenter = () => { if(!isStartClicked) btn.style.transform = `scale(${START_IMAGE_HOVER_SCALE})`; };
+                btn.onmouseleave = () => { if(!isStartClicked) btn.style.transform = 'scale(1)'; };
+            }
+        }
+        applyStartSettings(); // بلافاصله اجرا می‌شود
+
+        // ==========================================
+        // سیستم مدیریت لودینگ 
+        // ==========================================
+        let isEngineLoaded = false;
+        let isStartClicked = false;
+
+        function initLoadingManager() {
+            THREE.DefaultLoadingManager.onLoad = function ( ) {
+                isEngineLoaded = true;
+                if(isStartClicked) startGame();
+            };
+
+            THREE.DefaultLoadingManager.onProgress = function ( url, itemsLoaded, itemsTotal ) {
+                const progress = (itemsLoaded / itemsTotal) * 100;
+                const fill = document.getElementById('loading-bar-fill');
+                if (fill) fill.style.width = progress + '%';
+            };
+
+            THREE.DefaultLoadingManager.onError = function ( url ) {
+                console.warn('Error loading asset:', url);
+                isEngineLoaded = true; 
+                if(isStartClicked) startGame();
+            };
+        }
+
+        function startGame() {
+            const intro = document.getElementById('intro-screen');
+            if(intro) {
+                intro.style.opacity = '0';
+                setTimeout(() => { intro.style.display = 'none'; }, 1000); // 1 ثانیه ترانزیشن محو شدن
+            }
+        }
+
         // ==========================================
         // سیستم پویا محصولات 
         // ==========================================
@@ -200,17 +273,16 @@
             storeProducts.forEach(p => {
                 tempQuantities[p.id] = { 'M': 0, 'L': 0, 'XL': 0 }; 
                 currentSizes[p.id] = 'M';
-                currentImageIndexes[p.id] = 1; // شروع از عکس اصلی (ایندکس بصری 1)
+                currentImageIndexes[p.id] = 1; 
                 isTransitioning[p.id] = false;
                 
                 const len = p.images.length;
                 
-                // --- تولید کدهای اسلایدر بی‌نهایت ---
+                // تولید کدهای اسلایدر بی‌نهایت
                 let sliderContent = '';
                 if (len > 1) {
                     const firstImg = p.images[0];
                     const lastImg = p.images[len - 1];
-                    // اضافه کردن کلون عکس آخر در ابتدا، و کلون عکس اول در انتها
                     sliderContent = `
                         <div class="w-full h-full shrink-0 relative bg-gray-100"><img src="${lastImg}" class="w-full h-full object-cover"></div>
                         ${p.images.map(img => `<div class="w-full h-full shrink-0 relative bg-gray-100"><img src="${img}" class="w-full h-full object-cover"></div>`).join('')}
@@ -222,7 +294,6 @@
 
                 const productHTML = `
                     <div class="flex flex-col items-center w-full max-w-[260px]">
-                        <!-- کادر تصویر با افکت اسلاید بی‌نهایت -->
                         <div class="w-full aspect-square bg-white border border-gray-100 rounded-2xl flex items-center justify-center overflow-hidden shadow-sm hover:shadow-lg transition-all relative group cursor-pointer"
                              onmouseenter="hoverSlider(${p.id}, ${len})"
                              onmouseleave="resetSlider(${p.id}, ${len})">
@@ -243,7 +314,6 @@
                             </div>
                         </div>
                         
-                        <!-- قیمت، سایز و تعداد -->
                         <div class="flex items-center justify-between w-full px-1 mt-3">
                             <div class="font-extrabold text-lg text-gray-800">$${p.price}</div>
                             <div class="flex items-center gap-2 md:gap-3">
@@ -266,7 +336,6 @@
                 `;
                 container.innerHTML += productHTML;
             });
-            // باکس‌های خاکستری به طور کامل حذف شدند
         }
 
         // --- توابع اسلایدر بی‌نهایت (Infinite Slider) ---
@@ -285,7 +354,7 @@
                 track.style.transform = `translateX(-${visualIndex * 100}%)`;
                 isTransitioning[productId] = true;
                 
-                // منطق حلقه بی‌نهایت (جا‌به‌جایی نامرئی به کلون‌ها)
+                // منطق حلقه بی‌نهایت 
                 if (visualIndex === 0) {
                     setTimeout(() => {
                         currentImageIndexes[productId] = len;
@@ -434,15 +503,12 @@
                 if (typeof THREE.GLTFLoader === 'undefined') throw new Error("پلاگین GLTFLoader لود نشده است.");
                 if (typeof THREE.DRACOLoader === 'undefined') throw new Error("پلاگین DRACOLoader لود نشده است.");
                 
+                initLoadingManager();
+                
                 initProducts();
                 init3D();
                 initUI();
                 animate();
-                
-                setTimeout(() => {
-                    document.getElementById('loading-screen').style.opacity = '0';
-                    setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 500);
-                }, 1500);
 
             } catch (err) {
                 showError("خطای اساسی: " + err.message);
@@ -667,6 +733,25 @@
                 const manager = nipplejs.create(options);
                 manager.on('move', (evt, data) => { joystickMove.x = Math.cos(data.angle.radian) * Math.min(data.distance / 50, 1); joystickMove.y = Math.sin(data.angle.radian) * Math.min(data.distance / 50, 1); });
                 manager.on('end', () => { joystickMove.x = 0; joystickMove.y = 0; });
+            }
+
+            // سیستم دکمه START
+            const btnStart = document.getElementById('btn-start-experience');
+            if(btnStart) {
+                btnStart.addEventListener('click', () => {
+                    isStartClicked = true;
+                    // افکت محو شدن دکمه استارت
+                    btnStart.style.opacity = '0';
+                    setTimeout(() => btnStart.style.display = 'none', 300);
+                    
+                    if(isEngineLoaded) {
+                        startGame();
+                    } else {
+                        const loadingContainer = document.getElementById('loading-container');
+                        loadingContainer.style.display = 'flex';
+                        loadingContainer.classList.remove('hidden');
+                    }
+                });
             }
 
             btnOpenShop.addEventListener('click', () => { 
