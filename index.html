@@ -90,11 +90,11 @@
     <!-- صفحه لودینگ جدید هوشمند و فوق‌مینیمال -->
     <div id="intro-screen" class="absolute inset-0 z-[9999] bg-[#050505] overflow-hidden transition-opacity duration-1000 pointer-events-auto">
         
-        <!-- عکس بک‌گراند با کراپ خودکار، بلور ۱ پیکسلی و کاهش نور -->
-        <div class="absolute inset-0 z-0 bg-[url('BG.jpg')] bg-cover bg-center filter blur-[1px] brightness-75 scale-105"></div>
+        <!-- اضافه شدن ID و opacity-0 برای انیمیشن فید شدن بک‌گراند -->
+        <div id="intro-bg" class="absolute inset-0 z-0 bg-[url('BG.jpg')] bg-cover bg-center filter blur-[1px] brightness-75 scale-105 opacity-0 transition-opacity duration-1000"></div>
         
-        <!-- رابط کاربری START -->
-        <div id="start-ui-container" class="absolute left-0 right-0 z-10 flex flex-col items-center justify-center w-full pointer-events-none transition-all duration-300">
+        <!-- اضافه شدن opacity-0 و translate-y-6 برای افکت بالا آمدن دکمه -->
+        <div id="start-ui-container" class="absolute left-0 right-0 z-10 flex flex-col items-center justify-center w-full pointer-events-none transition-all duration-1000 opacity-0 translate-y-6">
             
             <!-- دکمه استارت تصویری -->
             <img id="btn-start-experience" src="start.png" alt="Start" 
@@ -208,7 +208,33 @@
                 btn.onmouseleave = () => { if(!isStartClicked) btn.style.transform = 'scale(1)'; };
             }
         }
-        applyStartSettings(); // بلافاصله اجرا می‌شود
+        
+        // سیستم جدید: منتظر ماندن برای لود عکس بک‌گراند
+        function preloadIntroAssets() {
+            const bgImg = new Image();
+            bgImg.src = 'BG.jpg';
+            
+            const introBg = document.getElementById('intro-bg');
+            const startUI = document.getElementById('start-ui-container');
+
+            const revealUI = () => {
+                // اول بک‌گراند به نرمی فید می‌شود
+                if (introBg) introBg.classList.remove('opacity-0');
+                
+                // نیم ثانیه بعد، دکمه استارت با یه انیمیشن ملایم میاد بالا
+                setTimeout(() => {
+                    if (startUI) {
+                        startUI.classList.remove('opacity-0', 'translate-y-6');
+                    }
+                }, 500);
+            };
+
+            bgImg.onload = revealUI;
+            bgImg.onerror = revealUI; // اگر عکس پیدا نشد هم دکمه رو نشون بده
+        }
+
+        applyStartSettings(); 
+        preloadIntroAssets();
 
         // ==========================================
         // سیستم مدیریت لودینگ 
