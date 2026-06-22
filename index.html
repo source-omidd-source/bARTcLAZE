@@ -205,6 +205,7 @@
 
         let currentImageIndexes = {};
         let tempQuantities = {};
+        let currentSizes = {}; // اضافه شدن متغیر برای ذخیره سایز فعال
         let totalCartAmount = 0;
         let totalCartItems = 0;
 
@@ -213,7 +214,9 @@
             container.innerHTML = '';
             
             storeProducts.forEach(p => {
-                tempQuantities[p.id] = 0; 
+                // حالا به جای یک عدد، یک آبجکت برای ذخیره تعداد هر سایز داریم
+                tempQuantities[p.id] = { 'M': 0, 'L': 0, 'XL': 0 }; 
+                currentSizes[p.id] = 'M'; // سایز پیش‌فرض
                 currentImageIndexes[p.id] = 0; 
                 
                 const imagesArrayStr = JSON.stringify(p.images).replace(/"/g, "'");
@@ -252,10 +255,14 @@
                         <div class="flex items-center justify-between w-full px-1 mt-3">
                             <div class="font-extrabold text-lg text-gray-800">$${p.price}</div>
                             <div class="flex items-center gap-2 md:gap-3">
-                                <div class="flex gap-1">
-                                    <button class="size-btn active bg-black text-white w-6 h-6 md:w-7 md:h-7 rounded-full border border-gray-300 text-[10px] md:text-xs font-semibold hover:bg-black hover:text-white transition-colors flex items-center justify-center" onclick="selectSize(this)">M</button>
-                                    <button class="size-btn w-6 h-6 md:w-7 md:h-7 rounded-full border border-gray-300 text-[10px] md:text-xs font-semibold hover:bg-black hover:text-white transition-colors flex items-center justify-center" onclick="selectSize(this)">L</button>
-                                    <button class="size-btn w-6 h-6 md:w-7 md:h-7 rounded-full border border-gray-300 text-[10px] md:text-xs font-semibold hover:bg-black hover:text-white transition-colors flex items-center justify-center" onclick="selectSize(this)">XL</button>
+                                <div class="flex gap-1.5 md:gap-2">
+                                    ${['M', 'L', 'XL'].map(size => `
+                                        <div class="relative flex items-center justify-center">
+                                            <button id="btn-size-${p.id}-${size}" class="size-btn ${size === 'M' ? 'active bg-black text-white' : 'bg-white text-black'} w-6 h-6 md:w-7 md:h-7 rounded-full border border-gray-300 text-[10px] md:text-xs font-semibold hover:bg-black hover:text-white transition-colors flex items-center justify-center" onclick="selectSize(${p.id}, '${size}')">${size}</button>
+                                            <!-- بج اعلان روی دکمه (Badge) -->
+                                            <span id="badge-${p.id}-${size}" class="absolute -top-1.5 -right-1.5 bg-green-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center scale-0 transition-transform duration-200">0</span>
+                                        </div>
+                                    `).join('')}
                                 </div>
                                 <div class="flex items-center justify-between bg-gray-50 rounded-full p-0.5 border border-gray-200">
                                     <button class="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white shadow-sm font-bold text-gray-600 hover:bg-gray-100 flex items-center justify-center text-sm leading-none pb-0.5" onclick="changeQty(${p.id}, -1)">-</button>
@@ -268,15 +275,8 @@
                 `;
                 container.innerHTML += productHTML;
             });
-        }
 
-        // --- تکنیک جدید Cross-Fade (فید شدن متقاطع بدون سفیدی) ---
-        function changeImageSmoothly(productId, newSrc) {
-            const frontImg = document.getElementById(`product-img-${productId}-front`);
-            const backImg = document.getElementById(`product-img-${productId}-back`);
-            const span = document.getElementById(`error-span-${productId}`);
-            
-            if (!frontImg || !backImg) return;
+            const emptyBoxesCount = Math.max(0, 6 - storeProducts.length);
             if (frontImg.getAttribute('src') === newSrc && frontImg.style.display !== 'none') return;
 
             // عکس قبلی را در لایه پشتی قرار می‌دهیم
@@ -327,25 +327,60 @@
             changeImageSmoothly(productId, imagesArray[0]);
         }
 
-        function selectSize(btn) {
-            let siblings = btn.parentElement.querySelectorAll('.size-btn');
-            siblings.forEach(b => b.classList.remove('active', 'bg-black', 'text-white'));
-            btn.classList.add('active', 'bg-black', 'text-white');
+        // تابع انتخاب سایز هوشمند
+        function selectSize(productId, size) {
+            currentSizes[productId] = size;
+            
+            ['M', 'L', 'XL'].forEach(s => {
+                const btn = document.getElementById(`btn-size-${productId}-${s}`);
+                if (btn) {
+                    if (s === size) {
+                        btn.classList.add('active', 'bg-black', 'text-white');
+                    } else {
+                        btn.classList.remove('active', 'bg-black', 'text-white');
+                    }
+                }
+            });
+
+            // آپدیت کردن عدد کنترلگر وسط (+ و -) بر اساس سایز جدید
+            document.getElementById(`qty-${productId}`).innerText = tempQuantities[productId][size];
         }
 
         function updateModalAmountLive() {
             let tempTotal = 0;
             storeProducts.forEach(p => {
-                tempTotal += (tempQuantities[p.id] || 0) * p.price;
+                // جمع کردن تمام سایزهای یک تیشرت
+                const totalProductQty = tempQuantities[p.id].M + tempQuantities[p.id].L + tempQuantities[p.id].XL;
+                tempTotal += totalProductQty * p.price;
             });
             document.getElementById('modal-amount').innerText = `amount: $${totalCartAmount + tempTotal}`;
         }
 
-        function changeQty(id, delta) {
-            if (tempQuantities[id] === undefined) tempQuantities[id] = 0;
-            tempQuantities[id] += delta;
-            if (tempQuantities[id] < 0) tempQuantities[id] = 0;
-            document.getElementById(`qty-${id}`).innerText = tempQuantities[id];
+        function changeQty(productId, delta) {
+            const activeSize = currentSizes[productId];
+            
+            let newQty = tempQuantities[productId][activeSize] + delta;
+            if (newQty < 0) newQty = 0;
+            
+            // ذخیره تعداد برای همان سایز خاص
+            tempQuantities[productId][activeSize] = newQty;
+            
+            // آپدیت کنترلگر
+            document.getElementById(`qty-${productId}`).innerText = newQty;
+            
+            // آپدیت بج (Badge) سبز رنگ روی دکمه سایز
+            const badge = document.getElementById(`badge-${productId}-${activeSize}`);
+            if (badge) {
+                badge.innerText = newQty;
+                if (newQty > 0) {
+                    badge.classList.remove('scale-0');
+                    badge.classList.add('scale-100');
+                } else {
+                    badge.classList.remove('scale-100');
+                    badge.classList.add('scale-0');
+                }
+            }
+
             updateModalAmountLive();
         }
 
@@ -652,8 +687,18 @@
                 modalBackdrop.style.display = 'none'; 
                 isModalOpen = false; 
                 storeProducts.forEach(p => {
-                    tempQuantities[p.id] = 0;
+                    // ریست کردن تمام مقادیر و بج‌ها در صورت انصراف
+                    tempQuantities[p.id] = { 'M': 0, 'L': 0, 'XL': 0 };
                     document.getElementById(`qty-${p.id}`).innerText = 0;
+                    
+                    ['M', 'L', 'XL'].forEach(s => {
+                        const badge = document.getElementById(`badge-${p.id}-${s}`);
+                        if(badge) {
+                            badge.classList.remove('scale-100');
+                            badge.classList.add('scale-0');
+                        }
+                    });
+                    
                     resetSlider(p.id, p.images);
                 });
                 checkInteraction(); 
@@ -662,11 +707,24 @@
             btnCheckout.addEventListener('click', () => { 
                 let addedAny = false;
                 storeProducts.forEach(p => {
-                    if(tempQuantities[p.id] > 0) {
-                        totalCartAmount += tempQuantities[p.id] * p.price;
-                        totalCartItems += tempQuantities[p.id];
-                        tempQuantities[p.id] = 0; 
+                    const totalProductQty = tempQuantities[p.id].M + tempQuantities[p.id].L + tempQuantities[p.id].XL;
+                    
+                    if(totalProductQty > 0) {
+                        totalCartAmount += totalProductQty * p.price;
+                        totalCartItems += totalProductQty;
+                        
+                        // ریست کردن مقادیر
+                        tempQuantities[p.id] = { 'M': 0, 'L': 0, 'XL': 0 }; 
                         document.getElementById(`qty-${p.id}`).innerText = '0';
+                        
+                        ['M', 'L', 'XL'].forEach(s => {
+                            const badge = document.getElementById(`badge-${p.id}-${s}`);
+                            if(badge) {
+                                badge.classList.remove('scale-100');
+                                badge.classList.add('scale-0');
+                            }
+                        });
+                        
                         resetSlider(p.id, p.images);
                         addedAny = true;
                     }
