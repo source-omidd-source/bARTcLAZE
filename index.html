@@ -277,6 +277,21 @@
             });
 
             const emptyBoxesCount = Math.max(0, 6 - storeProducts.length);
+            for(let i = 0; i < emptyBoxesCount; i++) {
+                const emptyHTML = `
+                    <div class="w-full max-w-[260px] aspect-square bg-[#b5c7c8] rounded-2xl shadow-inner opacity-60 hidden md:block"></div>
+                `;
+                container.innerHTML += emptyHTML;
+            }
+        }
+
+        // --- تکنیک جدید Cross-Fade (فید شدن متقاطع بدون سفیدی) ---
+        function changeImageSmoothly(productId, newSrc) {
+            const frontImg = document.getElementById(`product-img-${productId}-front`);
+            const backImg = document.getElementById(`product-img-${productId}-back`);
+            const span = document.getElementById(`error-span-${productId}`);
+            
+            if (!frontImg || !backImg) return;
             if (frontImg.getAttribute('src') === newSrc && frontImg.style.display !== 'none') return;
 
             // عکس قبلی را در لایه پشتی قرار می‌دهیم
