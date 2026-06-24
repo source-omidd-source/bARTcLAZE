@@ -534,16 +534,12 @@
         const POS_ROT_Y = 50 * (Math.PI / 180); // 80 درجه
         const POS_ROT_Z = 0;
         const POS_SCALE = 3.5;
+        // ==========================================
 
-        // ==========================================
-        // تنظیمات فیزیک و محدودیت حرکتی سبد
-        // ==========================================
-        const MAX_TERRAIN_STEP = 0.2; // حداکثر ارتفاعی که سبد می‌تواند بالا برود یا پایین بپرد (جلوگیری از رد شدن از لبه‌ها)
-        
         // --- تنظیمات نزدیکی سبد به اشیا ---
-        const COLLISION_SHRINK_RACK = 0.8; 
-        const COLLISION_SHRINK_POS = 0.8;  
-        const COLLISION_SHRINK_ENV = 0.3;  
+        const COLLISION_SHRINK_RACK = 0.8; // مقدار کم کردنِ حریم فیزیکی رگال
+        const COLLISION_SHRINK_POS = 0.8;  // مقدار کم کردنِ حریم فیزیکی دستگاه پوز
+        const COLLISION_SHRINK_ENV = 0.3;  // مقدار کم کردنِ حریم دیوارهای محیط
 
         function showError(msg) {
             const errLog = document.getElementById('error-log');
@@ -976,6 +972,7 @@
             
             // --- سیستم هوشمند قرار دادن رگال روی ناهمواری زمین ---
             if (envLoaded && rackLoaded && !rackSnapped) {
+                // آپدیت ماتریس کل محیط برای اطمینان از دقیق بودن خواندن ارتفاع
                 scene.updateMatrixWorld(true);
                 
                 const rayOrigin = new THREE.Vector3(clothingRack.position.x, 1000, clothingRack.position.z);
@@ -986,7 +983,7 @@
                 if (intersects.length > 0) {
                     clothingRack.position.y = intersects[0].point.y + RACK_POS_Y;
                 } else {
-                    clothingRack.position.y = RACK_POS_Y; 
+                    clothingRack.position.y = RACK_POS_Y; // اگر زمین زیرش نبود، آفست خالی رو بگیره
                 }
                 
                 clothingRack.updateMatrixWorld(true);
@@ -1065,21 +1062,8 @@
                 if (Math.abs(velocity.x) < 0.1 && moveX === 0) velocity.x = 0;
                 if (Math.abs(velocity.z) < 0.1 && moveZ === 0) velocity.z = 0;
 
-                // --- پیدا کردن ارتفاع دقیق زمین زیر سبد در همین لحظه ---
-                let currentGroundY = cartGroup.position.y;
-                if (environmentMeshes.length > 0) {
-                    const rayOriginC = new THREE.Vector3(cartGroup.position.x, 1000, cartGroup.position.z);
-                    const raycasterC = new THREE.Raycaster(rayOriginC, new THREE.Vector3(0, -1, 0));
-                    const intersectsC = raycasterC.intersectObjects(environmentMeshes, true);
-                    if (intersectsC.length > 0) {
-                        currentGroundY = intersectsC[0].point.y;
-                    }
-                }
-
-                const cartRadius = 0.25; 
-                const terrainLookAhead = 0.6; // سنسور پیش‌بینی برخورد برای جلوگیری از فرو رفتن جلوی سبد در لبه‌ها
+                const cartRadius = 0.6; // شعاع فیزیکی سبد از 0.8 کاهش یافت تا حسابی مماس به آبجکت‌ها شود
                 
-                // === بررسی برخورد در محور X ===
                 const testPosX = cartGroup.position.x + velocity.x * dt;
                 const cartBoxX = new THREE.Box3(
                     new THREE.Vector3(testPosX - cartRadius, cartGroup.position.y, cartGroup.position.z - cartRadius),
@@ -1089,26 +1073,11 @@
                 for(let box of obstacleBoxes) {
                     if (cartBoxX.intersectsBox(box)) { colX = true; break; }
                 }
-                if (testPosX < -100 || testPosX > 100) colX = true; // دیوار نامرئی محیط
-                
-                // چک کردن پله/لبه در محور X با سنسور پیش‌بینی
-                if (!colX && environmentMeshes.length > 0 && Math.abs(velocity.x) > 0.001) {
-                    const checkPosX = testPosX + Math.sign(velocity.x) * terrainLookAhead;
-                    const rayOriginX = new THREE.Vector3(checkPosX, 1000, cartGroup.position.z);
-                    const raycasterX = new THREE.Raycaster(rayOriginX, new THREE.Vector3(0, -1, 0));
-                    const intersectsX = raycasterX.intersectObjects(environmentMeshes, true);
-                    if (intersectsX.length > 0) {
-                        const nextGroundY = intersectsX[0].point.y;
-                        if (Math.abs(nextGroundY - currentGroundY) > MAX_TERRAIN_STEP) {
-                            colX = true; // گیر کردن به لبه بلند یا سقوط آزاد قبل از برخورد فیزیکی
-                        }
-                    }
-                }
+                if (testPosX < -100 || testPosX > 100) colX = true; // دیوار نامرئی بزرگ شده تا محیط قطع نشود
                 
                 if (colX) velocity.x = 0; 
                 else cartGroup.position.x = testPosX;
 
-                // === بررسی برخورد در محور Z ===
                 const testPosZ = cartGroup.position.z + velocity.z * dt;
                 const cartBoxZ = new THREE.Box3(
                     new THREE.Vector3(cartGroup.position.x - cartRadius, cartGroup.position.y, testPosZ - cartRadius),
@@ -1120,25 +1089,12 @@
                 }
                 if (testPosZ < -100 || testPosZ > 100) colZ = true; 
                 
-                // چک کردن پله/لبه در محور Z با سنسور پیش‌بینی
-                if (!colZ && environmentMeshes.length > 0 && Math.abs(velocity.z) > 0.001) {
-                    const checkPosZ = testPosZ + Math.sign(velocity.z) * terrainLookAhead;
-                    const rayOriginZ = new THREE.Vector3(cartGroup.position.x, 1000, checkPosZ);
-                    const raycasterZ = new THREE.Raycaster(rayOriginZ, new THREE.Vector3(0, -1, 0));
-                    const intersectsZ = raycasterZ.intersectObjects(environmentMeshes, true);
-                    if (intersectsZ.length > 0) {
-                        const nextGroundY = intersectsZ[0].point.y;
-                        if (Math.abs(nextGroundY - currentGroundY) > MAX_TERRAIN_STEP) {
-                            colZ = true; // گیر کردن به لبه بلند یا سقوط آزاد قبل از برخورد فیزیکی
-                        }
-                    }
-                }
-                
                 if (colZ) velocity.z = 0;
                 else cartGroup.position.z = testPosZ;
 
-                // --- حرکت نرم روی پستی و بلندی‌ها ---
+                // --- سیستم حرکت روی ناهمواری‌های زمین (Terrain Following) ---
                 if (environmentMeshes.length > 0) {
+                    // شلیک اشعه لیزری از بالای سر سبد به سمت زمین برای تشخیص ارتفاع
                     const rayOrigin = new THREE.Vector3(cartGroup.position.x, 100, cartGroup.position.z);
                     const rayDirection = new THREE.Vector3(0, -1, 0);
                     const raycaster = new THREE.Raycaster(rayOrigin, rayDirection);
@@ -1146,9 +1102,11 @@
                     const intersects = raycaster.intersectObjects(environmentMeshes, true);
                     if (intersects.length > 0) {
                         const groundHeight = intersects[0].point.y;
+                        // حرکت نرم روی پستی و بلندی‌ها
                         cartGroup.position.y += (groundHeight - cartGroup.position.y) * 15.0 * dt;
                     }
                 }
+                // -----------------------------------------------------------
 
                 const isSpeeding = velocity.lengthSq() > 0.5;
                 if (isSpeeding) {
@@ -1169,7 +1127,6 @@
             
             camera.position.lerp(targetPos, Math.min(5.0 * dt, 1.0));
             camera.lookAt(cartGroup.position);
-
             checkInteraction();
             renderer.render(scene, camera);
         }
