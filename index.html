@@ -190,9 +190,9 @@
         // ==========================================
         // تنظیمات عکس دکمه استارت (start.png)
         // ==========================================
-        const START_IMAGE_WIDTH = 320;       // عرض عکس استارت به پیکسل (طبق درخواست تغییر کرد)
-        const START_IMAGE_BOTTOM = 15;       // فاصله دکمه از پایین صفحه به درصد
-        const START_IMAGE_HOVER_SCALE = 1.05;// میزان بزرگ‌نمایی ملایم با رفتن موس روی دکمه
+        const START_IMAGE_WIDTH = 320;       
+        const START_IMAGE_BOTTOM = 15;       
+        const START_IMAGE_HOVER_SCALE = 1.05;
 
         function applyStartSettings() {
             const container = document.getElementById('start-ui-container');
@@ -205,6 +205,22 @@
                 btn.style.height = 'auto'; 
                 btn.onmouseenter = () => { if(!isStartClicked) btn.style.transform = `scale(${START_IMAGE_HOVER_SCALE})`; };
                 btn.onmouseleave = () => { if(!isStartClicked) btn.style.transform = 'scale(1)'; };
+                
+                btn.onclick = () => {
+                    isStartClicked = true;
+                    btn.style.opacity = '0';
+                    setTimeout(() => btn.style.display = 'none', 300);
+                    
+                    if(isEngineLoaded) {
+                        startGame();
+                    } else {
+                        const loadingContainer = document.getElementById('loading-container');
+                        if (loadingContainer) {
+                            loadingContainer.style.display = 'flex';
+                            loadingContainer.classList.remove('hidden');
+                        }
+                    }
+                };
             }
         }
         
@@ -233,10 +249,17 @@
         preloadIntroAssets();
 
         // ==========================================
-        // سیستم مدیریت لودینگ 
+        // سیستم مدیریت لودینگ هوشمند مدل‌های سه‌بعدی
         // ==========================================
         let isEngineLoaded = false;
         let isStartClicked = false;
+        
+        // وضعیت لود شدن تک‌تک مدل‌ها برای سیستم اسنپ به زمین
+        let envLoaded = false;
+        let rackLoaded = false;
+        let posLoaded = false;
+        let rackSnapped = false;
+        let posSnapped = false;
 
         function initLoadingManager() {
             THREE.DefaultLoadingManager.onLoad = function ( ) {
@@ -477,7 +500,46 @@
         const FIRE_OFFSET_Y = 0.9;  
         const FIRE_OFFSET_Z = 0;    
         const FIRE_SCALE = 2.4;     
+        
         // ==========================================
+        // تنظیمات دستی برای محیط بازی (env.glb)
+        // ==========================================
+        const ENV_POS_X = 0;
+        const ENV_POS_Y = 0;
+        const ENV_POS_Z = 0;
+        const ENV_ROT_X = 0;
+        const ENV_ROT_Y = 0;
+        const ENV_ROT_Z = 0;
+        const ENV_SCALE = 30.0; 
+        const AUTO_FIT_ENV = true; 
+
+        // ==========================================
+        // تنظیمات دستی برای جایگاه، چرخش و اندازه رگال لباس (regal.glb)
+        // ==========================================
+        const RACK_POS_X = 0;
+        const RACK_POS_Y = 2.5; 
+        const RACK_POS_Z = 1;
+        const RACK_ROT_X = 0;
+        const RACK_ROT_Y = Math.PI / 2.5; // چرخش 90 درجه
+        const RACK_ROT_Z = 0.05;
+        const RACK_SCALE = 3.5;
+
+        // ==========================================
+        // تنظیمات دستی برای جایگاه، چرخش و اندازه دستگاه پوز (pos.glb)
+        // ==========================================
+        const POS_POS_X = 4.4;
+        const POS_POS_Y = 1.6; // آفست از سطح زمین
+        const POS_POS_Z = -8;
+        const POS_ROT_X = -0.1;
+        const POS_ROT_Y = 50 * (Math.PI / 180); // 80 درجه
+        const POS_ROT_Z = 0;
+        const POS_SCALE = 3.5;
+        // ==========================================
+
+        // --- تنظیمات نزدیکی سبد به اشیا ---
+        const COLLISION_SHRINK_RACK = 0.8; // مقدار کم کردنِ حریم فیزیکی رگال
+        const COLLISION_SHRINK_POS = 0.8;  // مقدار کم کردنِ حریم فیزیکی دستگاه پوز
+        const COLLISION_SHRINK_ENV = 0.3;  // مقدار کم کردنِ حریم دیوارهای محیط
 
         function showError(msg) {
             const errLog = document.getElementById('error-log');
@@ -488,9 +550,11 @@
 
         let scene, camera, renderer, cartGroup, normalCartModel, fireCartModel, fireLight;
         let clothingRack, posMachine;
-        let obstacleBoxes = []; // آرایه برای ذخیره باوندرینگ باکس موانع جهت سیستم تصادف
-        let isFiery = false;
         
+        let obstacleBoxes = []; // موانع
+        let environmentMeshes = []; // مش‌های زمین جهت تشخیص ارتفاع ناهمواری
+        
+        let isFiery = false;
         let fireFrames = [], currentFireFrame = 0, fireFrameTimer = 0;
         const FIRE_FPS = 8; 
         
@@ -540,9 +604,9 @@
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xaad8e6);
-            scene.fog = new THREE.Fog(0xaad8e6, 20, 60);
+            scene.fog = new THREE.Fog(0xaad8e6, 20, 100);
 
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
             camera.position.set(15, 5, 5); 
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -572,81 +636,106 @@
             return new THREE.MeshStandardMaterial({ color: colorCode, roughness: 0.9, metalness: 0.05, flatShading: true });
         }
 
+        // تابع کمکی برای ایجاد جعبه تصادف (Collision) چسبیده‌تر و جمع‌وجورتر
+        function addSafeCollisionBox(object, shrinkAmount) {
+            object.updateMatrixWorld(true);
+            const box = new THREE.Box3().setFromObject(object);
+            const size = box.getSize(new THREE.Vector3());
+            
+            // جلوگیری از برعکس شدن ابعاد جعبه برای دیوارهای خیلی نازک
+            const sX = Math.min(shrinkAmount, size.x * 0.4);
+            const sY = Math.min(shrinkAmount, size.y * 0.4);
+            const sZ = Math.min(shrinkAmount, size.z * 0.4);
+            
+            box.expandByVector(new THREE.Vector3(-sX, -sY, -sZ));
+            obstacleBoxes.push(box);
+        }
+
         function createEnvironment() {
-            const groundGeo = new THREE.PlaneGeometry(100, 100, 32, 32);
-            const posAttr = groundGeo.attributes.position;
-            for(let i=0; i<posAttr.count; i++) posAttr.setZ(i, posAttr.getZ(i) + (Math.random() - 0.5) * 0.5);
-            groundGeo.computeVertexNormals();
+            const loader = new THREE.GLTFLoader();
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+            loader.setDRACOLoader(dracoLoader);
 
-            const ground = new THREE.Mesh(groundGeo, getClayMaterial(0x6ca362));
-            ground.rotation.x = -Math.PI / 2;
-            ground.receiveShadow = true;
-            scene.add(ground);
+            const environmentGroup = new THREE.Group();
+            scene.add(environmentGroup);
 
-            const pathGeo = new THREE.PlaneGeometry(8, 60, 10, 20);
-            for(let i=0; i<pathGeo.attributes.position.count; i++) pathGeo.attributes.position.setZ(i, pathGeo.attributes.position.getZ(i) + (Math.random() - 0.5) * 0.3);
-            pathGeo.computeVertexNormals();
-            const path = new THREE.Mesh(pathGeo, getClayMaterial(0x736c61));
-            path.rotation.x = -Math.PI / 2;
-            path.position.y = 0.05;
-            path.receiveShadow = true;
-            scene.add(path);
+            // لود کردن محیط بازی (env.glb)
+            loader.load('env.glb', function (gltf) {
+                const envModel = gltf.scene;
 
-            const treePositions = [[-10, -5], [-12, -15], [10, -10], [12, 5], [-8, 15]];
-            treePositions.forEach(pos => {
-                const treeGroup = new THREE.Group();
-                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 2, 8), getClayMaterial(0x6e4e32));
-                trunk.position.set(0, 1, 0); trunk.castShadow = true; treeGroup.add(trunk);
-                const leaves = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), getClayMaterial(0x4a7a3e));
-                leaves.position.set(0, 2.5, 0); leaves.castShadow = true; treeGroup.add(leaves);
-                
-                treeGroup.position.set(pos[0], 0, pos[1]);
-                scene.add(treeGroup);
+                // اول اسکیل و چرخش رو اعمال می‌کنیم تا ابعاد واقعی برای مرکزگیری محاسبه بشه
+                envModel.scale.setScalar(ENV_SCALE);
+                envModel.rotation.set(ENV_ROT_X, ENV_ROT_Y, ENV_ROT_Z);
+                envModel.updateMatrixWorld(true);
 
-                // ایجاد باکس تصادف برای درخت‌ها (کمی کوچکتر تا به برگ‌ها گیر نکند)
-                treeGroup.updateMatrixWorld(true);
-                const box = new THREE.Box3().setFromObject(treeGroup);
-                box.min.x += 0.8; box.max.x -= 0.8;
-                box.min.z += 0.8; box.max.z -= 0.8;
-                obstacleBoxes.push(box);
+                if (AUTO_FIT_ENV) {
+                    const box = new THREE.Box3().setFromObject(envModel);
+                    const center = box.getCenter(new THREE.Vector3());
+                    
+                    envModel.position.x += (0 - center.x);
+                    envModel.position.y += (0 - box.min.y); 
+                    envModel.position.z += (0 - center.z);
+                }
+
+                // اعمال آفست‌های دستی کاربر 
+                envModel.position.x += ENV_POS_X;
+                envModel.position.y += ENV_POS_Y;
+                envModel.position.z += ENV_POS_Z;
+
+                // حل مشکل پرش: آپدیت کردن ماتریس جهان بعد از تغییر پوزیشن نهایی زمین
+                envModel.updateMatrixWorld(true);
+
+                envModel.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        
+                        // اضافه کردن به مش‌های ناهمواری زمین برای سیستم Raycaster
+                        environmentMeshes.push(child);
+                        
+                        const name = child.name.toLowerCase();
+                        if(name.includes('tree') || name.includes('wall') || name.includes('collider') || name.includes('obstacle') || name.includes('bound')) {
+                            addSafeCollisionBox(child, COLLISION_SHRINK_ENV);
+                        }
+                    }
+                });
+
+                environmentGroup.add(envModel);
+                envLoaded = true; // اعلام موفقیت‌آمیز بودن لود زمین
+            }, undefined, function (error) {
+                console.warn("مدل env.glb لود نشد (احتمالاً در مسیر وجود ندارد).", error);
             });
 
+            // لود کردن مدل رگال لباس (regal.glb)
             clothingRack = new THREE.Group();
-            const pipeMat = getClayMaterial(0x444444);
-            const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4, 8), pipeMat); leftLeg.position.set(-2, 2, 0);
-            const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4, 8), pipeMat); rightLeg.position.set(2, 2, 0);
-            const topBar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.2, 8), pipeMat); topBar.rotation.z = Math.PI / 2; topBar.position.set(0, 3.9, 0);
-            const baseBar = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.2, 8), pipeMat); baseBar.rotation.z = Math.PI / 2; baseBar.position.set(0, 0.1, 0);
-            clothingRack.add(leftLeg, rightLeg, topBar, baseBar);
-
-            const createShirt = (color, xPos) => {
-                const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.2), getClayMaterial(color));
-                shirt.position.set(xPos, 3, 0);
-                const hanger = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 8, 12, Math.PI), pipeMat);
-                hanger.position.set(0, 0.7, 0);
-                shirt.add(hanger); return shirt;
-            };
-
-            clothingRack.add(createShirt(0xffffff, -1)); clothingRack.add(createShirt(0x222222, 0)); clothingRack.add(createShirt(0xffffff, 1));
-            clothingRack.rotation.y = Math.PI / 2; 
-            clothingRack.position.set(-3.5, 0, -8);
+            clothingRack.position.set(RACK_POS_X, RACK_POS_Y, RACK_POS_Z);
+            clothingRack.rotation.set(RACK_ROT_X, RACK_ROT_Y, RACK_ROT_Z);
             scene.add(clothingRack);
 
-            // ایجاد باکس تصادف برای رگال لباس
-            clothingRack.updateMatrixWorld(true);
-            obstacleBoxes.push(new THREE.Box3().setFromObject(clothingRack));
+            loader.load('regal.glb', function (gltf) {
+                const rackModel = gltf.scene;
+                rackModel.scale.setScalar(RACK_SCALE);
+                clothingRack.add(rackModel);
+                rackLoaded = true; // آماده برای اسنپ روی زمین
+            }, undefined, function (error) {
+                console.error("خطا در لود مدل regal.glb", error);
+            });
 
+            // لود کردن مدل دستگاه پوز (pos.glb)
             posMachine = new THREE.Group();
-            const posBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 2, 8), getClayMaterial(0x555555)); posBase.position.y = 1;
-            const posDevice = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.5), getClayMaterial(0x333333)); posDevice.position.set(0, 2.2, 0); posDevice.rotation.x = -Math.PI / 4;
-            const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshBasicMaterial({ color: 0x88ccff })); screen.position.set(0, 0.1, 0.26); 
-            posDevice.add(screen); posMachine.add(posBase, posDevice); 
-            posMachine.position.set(3.5, 0, -22);
+            posMachine.position.set(POS_POS_X, POS_POS_Y, POS_POS_Z);
+            posMachine.rotation.set(POS_ROT_X, POS_ROT_Y, POS_ROT_Z);
             scene.add(posMachine);
 
-            // ایجاد باکس تصادف برای دستگاه POS
-            posMachine.updateMatrixWorld(true);
-            obstacleBoxes.push(new THREE.Box3().setFromObject(posMachine));
+            loader.load('pos.glb', function (gltf) {
+                const posModel = gltf.scene;
+                posModel.scale.setScalar(POS_SCALE);
+                posMachine.add(posModel);
+                posLoaded = true; // آماده برای اسنپ روی زمین
+            }, undefined, function (error) {
+                console.error("خطا در لود مدل pos.glb", error);
+            });
         }
 
         function fitModelToCart(model) {
@@ -776,24 +865,6 @@
                 manager.on('end', () => { joystickMove.x = 0; joystickMove.y = 0; });
             }
 
-            // سیستم دکمه START
-            const btnStart = document.getElementById('btn-start-experience');
-            if(btnStart) {
-                btnStart.addEventListener('click', () => {
-                    isStartClicked = true;
-                    btnStart.style.opacity = '0';
-                    setTimeout(() => btnStart.style.display = 'none', 300);
-                    
-                    if(isEngineLoaded) {
-                        startGame();
-                    } else {
-                        const loadingContainer = document.getElementById('loading-container');
-                        loadingContainer.style.display = 'flex';
-                        loadingContainer.classList.remove('hidden');
-                    }
-                });
-            }
-
             btnOpenShop.addEventListener('click', () => { 
                 interactionPrompt.style.display = 'none'; 
                 modalBackdrop.style.display = 'block'; 
@@ -899,6 +970,48 @@
 
             const dt = Math.min(clock.getDelta(), 0.1); 
             
+            // --- سیستم هوشمند قرار دادن رگال روی ناهمواری زمین ---
+            if (envLoaded && rackLoaded && !rackSnapped) {
+                // آپدیت ماتریس کل محیط برای اطمینان از دقیق بودن خواندن ارتفاع
+                scene.updateMatrixWorld(true);
+                
+                const rayOrigin = new THREE.Vector3(clothingRack.position.x, 1000, clothingRack.position.z);
+                const rayDirection = new THREE.Vector3(0, -1, 0);
+                const raycaster = new THREE.Raycaster(rayOrigin, rayDirection);
+                const intersects = raycaster.intersectObjects(environmentMeshes, true);
+                
+                if (intersects.length > 0) {
+                    clothingRack.position.y = intersects[0].point.y + RACK_POS_Y;
+                } else {
+                    clothingRack.position.y = RACK_POS_Y; // اگر زمین زیرش نبود، آفست خالی رو بگیره
+                }
+                
+                clothingRack.updateMatrixWorld(true);
+                addSafeCollisionBox(clothingRack, COLLISION_SHRINK_RACK);
+                rackSnapped = true;
+            }
+
+            // --- سیستم هوشمند قرار دادن دستگاه پوز روی ناهمواری زمین ---
+            if (envLoaded && posLoaded && !posSnapped) {
+                scene.updateMatrixWorld(true);
+                
+                const rayOrigin = new THREE.Vector3(posMachine.position.x, 1000, posMachine.position.z);
+                const rayDirection = new THREE.Vector3(0, -1, 0);
+                const raycaster = new THREE.Raycaster(rayOrigin, rayDirection);
+                const intersects = raycaster.intersectObjects(environmentMeshes, true);
+                
+                if (intersects.length > 0) {
+                    posMachine.position.y = intersects[0].point.y + POS_POS_Y;
+                } else {
+                    posMachine.position.y = POS_POS_Y;
+                }
+                
+                posMachine.updateMatrixWorld(true);
+                addSafeCollisionBox(posMachine, COLLISION_SHRINK_POS);
+                posSnapped = true;
+            }
+            // -----------------------------------------------------------
+
             for (const mixer of mixers) {
                 mixer.update(dt);
             }
@@ -925,7 +1038,6 @@
                 if (keys.left) moveX -= 1; if (keys.right) moveX += 1;
                 if (joystickMove.x !== 0 || joystickMove.y !== 0) { moveX = joystickMove.x; moveZ = -joystickMove.y; }
 
-                // چرخش هوشمند به سمت زاویه حرکت
                 if (moveX !== 0 || moveZ !== 0) {
                     const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
                     const dirX = moveX / length;
@@ -938,54 +1050,62 @@
                     cartGroup.rotation.y += diff * 10.0 * dt; 
                 }
 
-                // --- سیستم فیزیک شتاب‌دار (Momentum & Friction) ---
                 const CART_ACCEL = 50.0;
                 const CART_FRICTION = 5.0;
 
-                // اعمال شتاب
                 velocity.x += moveX * CART_ACCEL * dt;
                 velocity.z += moveZ * CART_ACCEL * dt;
 
-                // اعمال اصطکاک مستمر
                 velocity.x -= velocity.x * CART_FRICTION * dt;
                 velocity.z -= velocity.z * CART_FRICTION * dt;
 
-                // توقف کامل (برای جلوگیری از لغزش بی‌نهایت)
                 if (Math.abs(velocity.x) < 0.1 && moveX === 0) velocity.x = 0;
                 if (Math.abs(velocity.z) < 0.1 && moveZ === 0) velocity.z = 0;
 
-                // --- سیستم برخورد هوشمند با موانع (Collision Detection) ---
-                const cartRadius = 0.8; // شعاع فرضی سبد برای برخورد
+                const cartRadius = 0.6; // شعاع فیزیکی سبد از 0.8 کاهش یافت تا حسابی مماس به آبجکت‌ها شود
                 
-                // تست برخورد در محور X
                 const testPosX = cartGroup.position.x + velocity.x * dt;
                 const cartBoxX = new THREE.Box3(
-                    new THREE.Vector3(testPosX - cartRadius, 0, cartGroup.position.z - cartRadius),
-                    new THREE.Vector3(testPosX + cartRadius, 2, cartGroup.position.z + cartRadius)
+                    new THREE.Vector3(testPosX - cartRadius, cartGroup.position.y, cartGroup.position.z - cartRadius),
+                    new THREE.Vector3(testPosX + cartRadius, cartGroup.position.y + 2, cartGroup.position.z + cartRadius)
                 );
                 let colX = false;
                 for(let box of obstacleBoxes) {
                     if (cartBoxX.intersectsBox(box)) { colX = true; break; }
                 }
-                if (testPosX < -10 || testPosX > 10) colX = true; // دیوارهای نامرئی محیط
+                if (testPosX < -100 || testPosX > 100) colX = true; // دیوار نامرئی بزرگ شده تا محیط قطع نشود
                 
-                if (colX) velocity.x = 0; // در صورت برخورد ترمز می‌کند
+                if (colX) velocity.x = 0; 
                 else cartGroup.position.x = testPosX;
 
-                // تست برخورد در محور Z
                 const testPosZ = cartGroup.position.z + velocity.z * dt;
                 const cartBoxZ = new THREE.Box3(
-                    new THREE.Vector3(cartGroup.position.x - cartRadius, 0, testPosZ - cartRadius),
-                    new THREE.Vector3(cartGroup.position.x + cartRadius, 2, testPosZ + cartRadius)
+                    new THREE.Vector3(cartGroup.position.x - cartRadius, cartGroup.position.y, testPosZ - cartRadius),
+                    new THREE.Vector3(cartGroup.position.x + cartRadius, cartGroup.position.y + 2, testPosZ + cartRadius)
                 );
                 let colZ = false;
                 for(let box of obstacleBoxes) {
                     if (cartBoxZ.intersectsBox(box)) { colZ = true; break; }
                 }
-                if (testPosZ < -30 || testPosZ > 15) colZ = true; // دیوارهای نامرئی محیط
+                if (testPosZ < -100 || testPosZ > 100) colZ = true; 
                 
                 if (colZ) velocity.z = 0;
                 else cartGroup.position.z = testPosZ;
+
+                // --- سیستم حرکت روی ناهمواری‌های زمین (Terrain Following) ---
+                if (environmentMeshes.length > 0) {
+                    // شلیک اشعه لیزری از بالای سر سبد به سمت زمین برای تشخیص ارتفاع
+                    const rayOrigin = new THREE.Vector3(cartGroup.position.x, 100, cartGroup.position.z);
+                    const rayDirection = new THREE.Vector3(0, -1, 0);
+                    const raycaster = new THREE.Raycaster(rayOrigin, rayDirection);
+
+                    const intersects = raycaster.intersectObjects(environmentMeshes, true);
+                    if (intersects.length > 0) {
+                        const groundHeight = intersects[0].point.y;
+                        // حرکت نرم روی پستی و بلندی‌ها
+                        cartGroup.position.y += (groundHeight - cartGroup.position.y) * 15.0 * dt;
+                    }
+                }
                 // -----------------------------------------------------------
 
                 const isSpeeding = velocity.lengthSq() > 0.5;
@@ -995,7 +1115,6 @@
                     if (isMoving) { cartSqueakAudio.pause(); isMoving = false; }
                 }
             } else {
-                // اگر منو باز باشد سبد به نرمی می‌ایستد
                 velocity.x -= velocity.x * 10.0 * dt;
                 velocity.z -= velocity.z * 10.0 * dt;
                 cartGroup.position.x += velocity.x * dt;
@@ -1008,7 +1127,6 @@
             
             camera.position.lerp(targetPos, Math.min(5.0 * dt, 1.0));
             camera.lookAt(cartGroup.position);
-
             checkInteraction();
             renderer.render(scene, camera);
         }
