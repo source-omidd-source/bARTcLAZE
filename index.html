@@ -833,9 +833,23 @@ meta charset="UTF-8">
             const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
             if (isMobile) {
                 document.getElementById('joystick-zone').style.display = 'block';
-                const options = { zone: document.getElementById('joystick-zone'), mode: 'static', position: { left: '50%', top: '50%' }, color: '#f1a23a', size: 100 };
+                
+                // ۱. ویژگی axis: 'y' اضافه شد تا حرکت ظاهری فقط عمودی شود
+                const options = { 
+                    zone: document.getElementById('joystick-zone'), 
+                    mode: 'static', 
+                    position: { left: '50%', top: '50%' }, 
+                    color: '#f1a23a', 
+                    size: 100,
+                    axis: 'y' 
+                };
+                
                 const manager = nipplejs.create(options);
-                manager.on('move', (evt, data) => { joystickMove.x = Math.cos(data.angle.radian) * Math.min(data.distance / 50, 1); joystickMove.y = Math.sin(data.angle.radian) * Math.min(data.distance / 50, 1); });
+                manager.on('move', (evt, data) => { 
+                    // ۲. مقدار x را همیشه 0 قرار می‌دهیم تا حرکت فقط جلو/عقب باشد
+                    joystickMove.x = 0; 
+                    joystickMove.y = Math.sin(data.angle.radian) * Math.min(data.distance / 50, 1); 
+                });
                 manager.on('end', () => { joystickMove.x = 0; joystickMove.y = 0; });
             }
 
