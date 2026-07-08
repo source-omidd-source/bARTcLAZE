@@ -1,17 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Hot-Rod Clay Shopping Site</title>
-    <!-- Tailwind CSS for UI styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Three.js Core -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-    <!-- GLTF Loader -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <!-- DRACO Loader -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
     
     <!-- Post Processing for Depth of Field (DoF) -->
@@ -111,7 +103,7 @@
 
         <div class="absolute top-5 right-5 flex items-center gap-4 pointer-events-auto">
             <span id="hud-amount" class="font-bold text-sm text-gray-800 tracking-wider">amount: $0</span>
-            <div class="relative cursor-pointer hover:scale-105 transition-transform" onclick="alert('Cart opened!')">
+            <div class="relative cursor-pointer hover:scale-105 transition-transform">
                 <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-md">
                     <svg class="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 </div>
@@ -160,7 +152,7 @@
         <!-- Easter Egg Modal -->
         <div id="easter-egg-modal" class="modern-modal flex-col items-center p-8 w-[90%] max-w-[400px] text-center">
             <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-6 shadow-md">
-                <span class="text-4xl">🎉</span>
+                <span class="text-3xl">🎉</span>
             </div>
             <h2 class="text-2xl font-bold mb-2 text-purple-600">ایستر اگ!</h2>
             <p class="mb-8 text-gray-500 text-sm">شما راز مخفی این پست را پیدا کردید!</p>
@@ -171,6 +163,7 @@
     </div>
 
     <script>
+        // ==========================================
         // تنظیمات دوربین و عمق میدان
         // ==========================================
         const CAMERA_FOCAL_LENGTH = 50;
@@ -186,30 +179,32 @@
         const DOF_APERTURE = 0.008;      
         const DOF_MAX_BLUR = 0.005;      
 
-        // ========================================== 
-
+        // ==========================================
         // تنظیمات محیط و اشیاء
-        const ENV_POS_X = 0; const ENV_POS_Y = 0; const ENV_POS_Z = 0;
+        // ==========================================
+        const ENV_POS_X = 0; const ENV_POS_Y = -6; const ENV_POS_Z = 0;
         const ENV_ROT_X_DEG = 0; const ENV_ROT_Y_DEG = 180; const ENV_ROT_Z_DEG = 0;
         
         const ENV_ROT_X = ENV_ROT_X_DEG * (Math.PI / 180); 
         const ENV_ROT_Y = ENV_ROT_Y_DEG * (Math.PI / 180); 
         const ENV_ROT_Z = ENV_ROT_Z_DEG * (Math.PI / 180);
         
-        const ENV_SCALE = 0.4; 
+        const ENV_SCALE = 0.5; 
         const AUTO_FIT_ENV = true; 
         const CART_POS_Y = 0.1;
         
-        // مختصات شروع حرکت سبد (قابل تغییر برای جلوگیری از گیر کردن در شروع بازی)
-        const CART_START_X = 8;
-        const CART_START_Z = 10;
+        // مختصات شروع حرکت سبد 
+        const CART_START_X = 9;
+        const CART_START_Z = 12;
 
+        // نام فایلی که شامل درخت‌ها، بوته‌ها، رگال و دستگاه پز است
         const PROPS_GLB_NAME = 'props.glb';
         
         const START_IMAGE_WIDTH = 320; const START_IMAGE_BOTTOM = 15; const START_IMAGE_HOVER_SCALE = 1.05;
-        const StandardColorSpace = THREE.LinearEncoding;
-
-        // متغیرهای فیزیک هیبریدی و سطح زمین
+        const StandardColorSpace = THREE.sRGBEncoding;
+        // ==========================================
+        // متغیرهای فیزیک، سبد و برخورد (اصلاح شده به سیستم Raycast)
+        // ==========================================
         let raycastTimer = 0;               
         let currentSteerAngle = 0; 
         let currentUp = new THREE.Vector3(0, 1, 0); 
@@ -218,7 +213,7 @@
         let targetCartY = CART_POS_Y;       
         const reusableRaycaster = new THREE.Raycaster(); 
         const downVector = new THREE.Vector3(0, -1, 0);  
-
+        
         let composer, bokehPass;
         let cartInitialSnapped = false; 
 
@@ -483,11 +478,11 @@
         
         let clothingRack = null; 
         let posMachine = null;
+        let postMachine = null; // برای ایستر اگ
         
-        // سیستم فیزیک هیبریدی
-        let obstacleBoxes = []; // جعبه‌های سبک برای درخت و رگال (ضد لگ)
-        let obstacleMeshes = []; // مش‌های لیزری برای دیوارهای نامرئی (دقیق)
-        let environmentMeshes = []; // زمین برای ارتفاع
+        // سیستم لیزری (Raycast) به جای Box
+        let obstacleMeshes = []; 
+        let environmentMeshes = []; 
         
         let isFiery = false;
         let fireFrames = [], currentFireFrame = 0, fireFrameTimer = 0;
@@ -503,6 +498,7 @@
         const shoppingModal = document.getElementById('shopping-modal');
         const posModal = document.getElementById('pos-modal');
         const easterEggModal = document.getElementById('easter-egg-modal');
+        
         const modalBackdrop = document.getElementById('modal-backdrop');
         const btnOpenShop = document.getElementById('btn-open-shop');
         const btnOpenPos = document.getElementById('btn-open-pos');
@@ -513,7 +509,7 @@
         const btnCloseEasterEgg = document.getElementById('btn-close-easter-egg');
         
         const cartSqueakAudio = document.getElementById('cart-squeak');
-        cartSqueakAudio.volume = 0.1;
+        cartSqueakAudio.volume = 0.8;
         let isMoving = false, isModalOpen = false;
 
         const clock = new THREE.Clock();
@@ -540,7 +536,7 @@
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xaad8e6);
-            scene.fog = new THREE.Fog(0xaad8e6, 20, 10);
+            //scene.fog = new THREE.Fog(0xaad8e6, 20, 10);
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
             camera.setFocalLength(CAMERA_FOCAL_LENGTH);
@@ -577,50 +573,41 @@
             window.addEventListener('resize', onWindowResize, false);
         }
 
+        // ==========================================
+        // این تابع اصلاح شد تا Mipmapping را خاموش کند
+        // و مشکل خطوط و باگ‌های تکسچرهای بیک‌شده برطرف شود.
+        // ==========================================
         function applyBakedMaterial(object) {
             object.traverse((child) => {
                 if (child.isMesh) {
                     if (child.material) {
                         const replaceMaterial = (mat) => {
-                            const map = mat.map || mat.emissiveMap; 
+                            const map = mat.map || mat.emissiveMap;
                             if (map) {
-                                map.encoding = StandardColorSpace;
+                                map.generateMipmaps = false;
+                                map.minFilter = THREE.LinearFilter; // بازگشت به Linear برای نرمی
+                                map.magFilter = THREE.LinearFilter;
+                                map.wrapS = THREE.ClampToEdgeWrapping;
+                                map.wrapT = THREE.ClampToEdgeWrapping;
+                                map.needsUpdate = true;
                             }
+                            
+                            // اصلاح اصلی برای حذف خطوط لبه:
+                            // استفاده از AlphaTest برای حذف پیکسل‌های نیمه‌شفاف حاشیه
                             return new THREE.MeshBasicMaterial({
                                 map: map,
                                 color: map ? 0xffffff : mat.color,
-                                transparent: mat.transparent,
-                                opacity: mat.opacity,
-                                alphaTest: mat.alphaTest,
-                                side: mat.side || THREE.FrontSide
+                                transparent: true, // همیشه شفافیت را فعال نگه می‌داریم
+                                alphaTest: 0.8,    // این مقدار بحرانی است: پیکسل‌های با شفافیت زیر 0.5 حذف می‌شوند
+                                side: THREE.FrontSide
                             });
                         };
                         
-                        if (Array.isArray(child.material)) {
-                            child.material = child.material.map(replaceMaterial);
-                        } else {
-                            child.material = replaceMaterial(child.material);
-                        }
+                        if (Array.isArray(child.material)) child.material = child.material.map(replaceMaterial);
+                        else child.material = replaceMaterial(child.material);
                     }
-                    child.castShadow = false;
-                    child.receiveShadow = false;
                 }
             });
-        }
-
-        // جعبه ضد لگ برای اشیاء پر جزئیات مثل درخت
-        function addSafeCollisionBox(object, shrinkAmount) {
-            object.updateMatrixWorld(true);
-            const box = new THREE.Box3().setFromObject(object);
-            
-            // جلوگیری از تشکیل جعبه‌های خیلی بزرگ
-            const size = box.getSize(new THREE.Vector3());
-            const sX = Math.min(shrinkAmount, size.x * 0.4);
-            const sY = Math.min(shrinkAmount, size.y * 0.4);
-            const sZ = Math.min(shrinkAmount, size.z * 0.4);
-            
-            box.expandByVector(new THREE.Vector3(-sX, -sY, -sZ));
-            obstacleBoxes.push(box);
         }
 
         function createEnvironment() {
@@ -658,21 +645,19 @@
                 envModel.traverse((child) => {
                     if (child.isMesh) {
                         const name = child.name.toLowerCase();
-                        
+                        // بررسی سنگ‌ها و علف‌ها برای رد شدن سبد از درونشان
                         const isGrass = name.includes('grass') || name.includes('bush') || name.includes('plant') || name.includes('flower') || name.includes('weed') || name.includes('rock') || name.includes('stone');
                         
-                        // دیوارهای نامرئی برای اشعه لیزری دقیق
-                        if(name.includes('wall') || name.includes('collider') || name.includes('bound')) {
+                        // اضافه کردن به سیستم مانع (برای دیوارها، درخت‌ها و غیره)
+                        if(name.includes('1tree') || name.includes('wall') || name.includes('collider') || name.includes('obstacle') || name.includes('bound')) {
                             obstacleMeshes.push(child);
-                            child.visible = false;
-                        } 
-                        // درخت‌ها و موانع دیگر برای فیزیک ضد لگ
-                        else if (!isGrass) {
-                            if (name.includes('tree') || name.includes('obstacle')) {
-                                addSafeCollisionBox(child, 0.2);
-                            } else {
-                                environmentMeshes.push(child); // زمین
+                            
+                            // نامرئی کردن دیوارهای نامرئی در بازی
+                            if(name.includes('wall') || name.includes('collider') || name.includes('bound')) {
+                                child.visible = false;
                             }
+                        } else if (!isGrass) {
+                            environmentMeshes.push(child);
                         }
                     }
                 });
@@ -680,38 +665,43 @@
                 environmentGroup.add(envModel);
                 envLoaded = true; 
 
-                // --- لود فایل دوم روی زمین ---
+                // --- لود کردن فایل ترکیبی اشیاء ---
                 loader.load(PROPS_GLB_NAME, function (propsGltf) {
                     const propsModel = propsGltf.scene;
                     applyBakedMaterial(propsModel);
                     
                     envModel.add(propsModel);
-                    envModel.updateMatrixWorld(true);
 
                     propsModel.traverse((child) => {
                         if (child.isMesh) {
                             const name = child.name.toLowerCase();
                             
+                            let isPropObstacle = false;
+                            
                             if (name.includes('regal') || name.includes('rack') || name.includes('shop')) {
                                 clothingRack = child;
-                                addSafeCollisionBox(child, 0.2);
+                                isPropObstacle = true;
                             }
-                            else if (name.includes('pos') || name.includes('cash') || name.includes('checkout')) {
+                            if (name.includes('pos') || name.includes('cash') || name.includes('checkout')) {
                                 posMachine = child;
-                                addSafeCollisionBox(child, 0.2);
+                                isPropObstacle = true;
                             }
-                            // پیدا کردن موانع دیگر در فایل ترکیبی
-                            else {
-                                const isGrass = name.includes('grass') || name.includes('bush') || name.includes('plant') || name.includes('flower') || name.includes('weed') || name.includes('rock') || name.includes('stone');
-                                
-                                if (!isGrass && !name.includes('post')) {
-                                    if(name.includes('wall') || name.includes('collider') || name.includes('bound')) {
-                                        obstacleMeshes.push(child);
-                                        child.visible = false;
-                                    } else if (name.includes('tree') || name.includes('obstacle')) {
-                                        addSafeCollisionBox(child, 0.2);
-                                    }
+                            // ایستر اگ (Post)
+                            if (name.includes('post')) {
+                                postMachine = child;
+                                isPropObstacle = true;
+                            }
+                            if (name.includes('1tree') || name.includes('collider') || name.includes('obstacle') || name.includes('wall')) {
+                                isPropObstacle = true;
+                                if(name.includes('wall') || name.includes('collider')) {
+                                    child.visible = false;
                                 }
+                            }
+                            
+                            const isGrass = name.includes('grass') || name.includes('bush') || name.includes('plant') || name.includes('flower') || name.includes('weed') || name.includes('rock') || name.includes('stone');
+                            
+                            if (isPropObstacle && !isGrass) {
+                                obstacleMeshes.push(child); 
                             }
                         }
                     });
@@ -832,14 +822,12 @@
             document.addEventListener('keydown', (e) => {
                 if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = true;
                 if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
-                if(e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
-                if(e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+                // تشخیص دکمه‌های A و D (چپ و راست) حذف شد
             });
             document.addEventListener('keyup', (e) => {
                 if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false;
                 if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
-                if(e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
-                if(e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+                // تشخیص دکمه‌های A و D (چپ و راست) حذف شد
             });
 
             const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
@@ -924,6 +912,7 @@
                 updateHUD();
                 if (fireCartModel) fireCartModel.visible = false;
             });
+
             btnCloseEasterEgg.addEventListener('click', () => {
                 easterEggModal.style.display = 'none';
                 modalBackdrop.style.display = 'none';
@@ -931,12 +920,14 @@
                 checkInteraction();
             });
 
-            // سیستم کلیک هوشمند و همه‌جانبه برای ایستر اگ (Post)
+            // سیستم کلیک روی ایستر اگ (Post)
             const clickRaycaster = new THREE.Raycaster();
             const mouseVector = new THREE.Vector2();
 
             window.addEventListener('pointerdown', (event) => {
-                if (isModalOpen || !camera || !cartGroup) return;
+                if (isModalOpen || !postMachine || !camera) return;
+                
+                // نادیده گرفتن کلیک روی رابط کاربری
                 if (event.target.closest('#ui-layer') && !event.target.id.includes('canvas')) return;
 
                 mouseVector.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -944,22 +935,17 @@
 
                 clickRaycaster.setFromCamera(mouseVector, camera);
 
-                // پرتاب اشعه به کل صفحه تا هر شیئی که کلیک شد را بررسی کند
-                const intersects = clickRaycaster.intersectObject(scene, true);
-                
-                for (let i = 0; i < intersects.length; i++) {
-                    const hitObj = intersects[i].object;
+                const intersects = clickRaycaster.intersectObject(postMachine, true);
+                if (intersects.length > 0) {
+                    const postWorldPos = new THREE.Vector3();
+                    postMachine.getWorldPosition(postWorldPos);
                     
-                    // بررسی اینکه شیء کلیک شده، کلمه post را در نام خود دارد یا خیر
-                    if (hitObj.name && hitObj.name.toLowerCase().includes('post')) {
-                        // چک کردن فاصله سبد تا نقطه‌ای که روی پست کلیک شده است
-                        if (cartGroup.position.distanceTo(intersects[i].point) < 15.0) {
-                            interactionPrompt.style.display = 'none';
-                            modalBackdrop.style.display = 'block';
-                            easterEggModal.style.display = 'flex';
-                            isModalOpen = true;
-                            break; 
-                        }
+                    // فقط اگر کاربر نزدیک به پست باشد مودال باز می‌شود
+                    if (cartGroup && cartGroup.position.distanceTo(postWorldPos) < 10.0) {
+                        interactionPrompt.style.display = 'none';
+                        modalBackdrop.style.display = 'block';
+                        easterEggModal.style.display = 'flex';
+                        isModalOpen = true;
                     }
                 }
             });
@@ -983,8 +969,8 @@
             }
             
             interactionPrompt.style.display = 'none'; btnOpenShop.style.display = 'none'; btnOpenPos.style.display = 'none';
-            if (distRack < 5.0) { interactionPrompt.style.display = 'block'; btnOpenShop.style.display = 'block'; } 
-            else if (distPos < 5.0) { interactionPrompt.style.display = 'block'; btnOpenPos.style.display = 'block'; }
+            if (distRack < 9.0) { interactionPrompt.style.display = 'block'; btnOpenShop.style.display = 'block'; } 
+            else if (distPos < 6.0) { interactionPrompt.style.display = 'block'; btnOpenPos.style.display = 'block'; }
         }
 
         function igniteCart() {
@@ -1044,59 +1030,47 @@
                 if (Math.abs(velocity.x) < 0.1 && moveX === 0) velocity.x = 0;
                 if (Math.abs(velocity.z) < 0.1 && moveZ === 0) velocity.z = 0;
 
-                const cartRadius = 0.4; 
-                
-                const testPosX = cartGroup.position.x + velocity.x * dt;
-                const testPosZ = cartGroup.position.z + velocity.z * dt;
-                
-                let colX = false;
-                let colZ = false;
-
-                // ۱. سیستم فیزیک جعبه‌ای (ضد لگ برای درخت‌ها و اشیاء)
-                const cartBoxX = new THREE.Box3(
-                    new THREE.Vector3(testPosX - cartRadius, cartGroup.position.y + 0.1, cartGroup.position.z - cartRadius),
-                    new THREE.Vector3(testPosX + cartRadius, cartGroup.position.y + 1.5, cartGroup.position.z + cartRadius)
-                );
-                for(let box of obstacleBoxes) { if (cartBoxX.intersectsBox(box)) { colX = true; break; } }
-                if(testPosX < -100 || testPosX > 100) colX = true; 
-
-                const cartBoxZ = new THREE.Box3(
-                    new THREE.Vector3(cartGroup.position.x - cartRadius, cartGroup.position.y + 0.1, testPosZ - cartRadius),
-                    new THREE.Vector3(cartGroup.position.x + cartRadius, cartGroup.position.y + 1.5, testPosZ + cartRadius)
-                );
-                if (!colZ) {
-                    for(let box of obstacleBoxes) { if (cartBoxZ.intersectsBox(box)) { colZ = true; break; } }
-                }
-                if(testPosZ < -100 || testPosZ > 100) colZ = true;
-
-                // ۲. سیستم فیزیک لیزری (دقیق برای دیوارهای نامرئی نازک)
-                // پرتاب اشعه فقط به اندازه مقداری که قرار است حرکت کنیم (جلوگیری از رد شدن)
+                const cartRadius = 0.4; // شعاع برخورد با اشیاء
                 const rayOrigin = cartGroup.position.clone();
-                rayOrigin.y += 0.5;
-
-                if (!colX && Math.abs(velocity.x) > 0.001) {
-                    reusableRaycaster.set(rayOrigin, new THREE.Vector3(Math.sign(velocity.x), 0, 0));
-                    reusableRaycaster.far = cartRadius + Math.abs(velocity.x * dt);
+                rayOrigin.y += 0.5; // پرتاب اشعه از نیم متری زمین برای رد شدن از پستی بلندی‌های کوچک
+                
+                let testPosX = cartGroup.position.x + velocity.x * dt;
+                
+                // سیستم برخورد لیزری برای محور X
+                if (Math.abs(velocity.x) > 0.001) {
+                    const dirX = new THREE.Vector3(Math.sign(velocity.x), 0, 0);
+                    reusableRaycaster.set(rayOrigin, dirX);
                     const hitsX = reusableRaycaster.intersectObjects(obstacleMeshes, true);
-                    if (hitsX.length > 0) colX = true;
+                    
+                    if (hitsX.length > 0 && hitsX[0].distance < cartRadius) {
+                        velocity.x = 0;
+                        testPosX = cartGroup.position.x;
+                    } else if (testPosX < -100 || testPosX > 100) {
+                        velocity.x = 0;
+                        testPosX = cartGroup.position.x;
+                    }
                 }
+                cartGroup.position.x = testPosX;
 
-                if (!colZ && Math.abs(velocity.z) > 0.001) {
-                    rayOrigin.x = colX ? cartGroup.position.x : testPosX; 
-                    reusableRaycaster.set(rayOrigin, new THREE.Vector3(0, 0, Math.sign(velocity.z)));
-                    reusableRaycaster.far = cartRadius + Math.abs(velocity.z * dt);
+                let testPosZ = cartGroup.position.z + velocity.z * dt;
+                
+                // سیستم برخورد لیزری برای محور Z
+                if (Math.abs(velocity.z) > 0.001) {
+                    const dirZ = new THREE.Vector3(0, 0, Math.sign(velocity.z));
+                    reusableRaycaster.set(rayOrigin, dirZ);
                     const hitsZ = reusableRaycaster.intersectObjects(obstacleMeshes, true);
-                    if (hitsZ.length > 0) colZ = true;
+                    
+                    if (hitsZ.length > 0 && hitsZ[0].distance < cartRadius) {
+                        velocity.z = 0;
+                        testPosZ = cartGroup.position.z;
+                    } else if (testPosZ < -100 || testPosZ > 100) {
+                        velocity.z = 0;
+                        testPosZ = cartGroup.position.z;
+                    }
                 }
+                cartGroup.position.z = testPosZ;
 
-                // بازگرداندن شعاع اشعه به بی‌نهایت برای بررسی زمین
-                reusableRaycaster.far = Infinity;
-
-                // اعمال برخوردها
-                if (colX) velocity.x = 0; else cartGroup.position.x = testPosX;
-                if (colZ) velocity.z = 0; else cartGroup.position.z = testPosZ;
-
-                // ۳. منطق فیزیک سطح زمین و ارتفاع سبد
+                // ----- منطق فیزیک سطح (رفع مشکل فرورفتن در زمین) -----
                 if (environmentMeshes.length > 0) {
                     if (!cartInitialSnapped) {
                         reusableRaycaster.set(new THREE.Vector3(cartGroup.position.x, 100, cartGroup.position.z), downVector);
@@ -1151,6 +1125,7 @@
                         cartGroup.quaternion.setFromRotationMatrix(matrix);
                     }
                 }
+                // ---------------------------------------------------
 
                 const isSpeeding = velocity.lengthSq() > 0.5;
                 if (isSpeeding) {
