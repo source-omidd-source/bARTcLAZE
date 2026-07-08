@@ -166,11 +166,11 @@ meta charset="UTF-8">
         // ==========================================
         // تنظیمات دوربین و عمق میدان
         // ==========================================
-        const CAMERA_FOCAL_LENGTH = 90;
-        const CAMERA_DISTANCE = 50;
+        const CAMERA_FOCAL_LENGTH = 100;
+        const CAMERA_DISTANCE = 73;
         const CAMERA_ANGLE_H_DEG = 90; 
-        const CAMERA_ANGLE_V_DEG = 86; 
-        const CAMERA_TARGET_Y_OFFSET = 3; 
+        const CAMERA_ANGLE_V_DEG = 84; 
+        const CAMERA_TARGET_Y_OFFSET = 4.3; 
         const CAMERA_LERP_SPEED = 100.0; 
         
         const ENABLE_DOF = false;         
@@ -178,6 +178,14 @@ meta charset="UTF-8">
         const DOF_MANUAL_FOCUS = 10;   
         const DOF_APERTURE = 0.008;      
         const DOF_MAX_BLUR = 0.005;      
+
+        // متغیرهای جدید برای محدود کردن حرکت دوربین در محور Z
+        const CAMERA_LIMIT_MIN_Z = -1; // کمترین حد مجاز (عقب‌تر نرود)
+        const CAMERA_LIMIT_MAX_Z = 19;  // بیشترین حد مجاز (جلوتر نرود)
+        // متغیرهای هوشمند برای کنترل حرکت نرم و حذف پرش دوربین
+        let cameraTargetPos = new THREE.Vector3();
+        let isCameraInitialized = false;
+        const CAMERA_SMOOTH_SPEED = 5.0; // سرعت ترمز نرم و تعقیب (هرچه کمتر باشد، نرم‌تر و کشسانی‌تر می‌شود)
 
         // ==========================================
         // تنظیمات محیط و اشیاء
@@ -189,7 +197,7 @@ meta charset="UTF-8">
         const ENV_ROT_Y = ENV_ROT_Y_DEG * (Math.PI / 180); 
         const ENV_ROT_Z = ENV_ROT_Z_DEG * (Math.PI / 180);
         
-        const ENV_SCALE = 0.5; 
+        const ENV_SCALE = 0.47; 
         const AUTO_FIT_ENV = true; 
         const CART_POS_Y = 0.1;
         
@@ -983,7 +991,7 @@ meta charset="UTF-8">
             }
             
             interactionPrompt.style.display = 'none'; btnOpenShop.style.display = 'none'; btnOpenPos.style.display = 'none';
-            if (distRack < 9.0) { interactionPrompt.style.display = 'block'; btnOpenShop.style.display = 'block'; } 
+            if (distRack < 11.35) { interactionPrompt.style.display = 'block'; btnOpenShop.style.display = 'block'; } 
             else if (distPos < 6.0) { interactionPrompt.style.display = 'block'; btnOpenPos.style.display = 'block'; }
         }
 
@@ -1158,16 +1166,49 @@ meta charset="UTF-8">
             const theta = CAMERA_ANGLE_H_DEG * (Math.PI / 180); 
             const phi = CAMERA_ANGLE_V_DEG * (Math.PI / 180);   
             
+            // مقداردهی اولیه در فریم اول برای جلوگیری از اختلال مختصات
+            if (!isCameraInitialized && cartGroup) {
+                cameraTargetPos.copy(cartGroup.position);
+                isCameraInitialized = true;
+            }
+
+            // تعریف نقطه هدف ایده‌آل برای این فریم
+            let idealTarget = new THREE.Vector3();
+
+            if (cartGroup.position.z >= CAMERA_LIMIT_MIN_Z && cartGroup.position.z <= CAMERA_LIMIT_MAX_Z) {
+                // الف) داخل محدوده: هدف دوربین، تعقیب کامل سبد در هر ۳ محور است
+                idealTarget.copy(cartGroup.position);
+            } else {
+                // ب) خارج از محدوده: Z روی مرز قفل می‌شود و X و Y روی آخرین موقعیت معتبر خود ثابت می‌مانند
+                idealTarget.set(
+                    cameraTargetPos.x, 
+                    cameraTargetPos.y, 
+                    THREE.MathUtils.clamp(cartGroup.position.z, CAMERA_LIMIT_MIN_Z, CAMERA_LIMIT_MAX_Z)
+                );
+            }
+
+            // خط جادویی: لِرپ کردنِ خودِ نقطه تمرکز با سرعت ملایم 6.0
+            // این خط باعث می‌شود وقتی سبد ناگهانی وارد محدوده می‌شود دوربین نپرد، 
+            // و وقتی به لیمیت می‌رسد، هدف آرام آرام سرعتش کم شده و ترمز نرم بزند.
+            cameraTargetPos.lerp(idealTarget, Math.min(CAMERA_SMOOTH_SPEED * dt, 1.0));
+
+            // محاسبه موقعیت نهایی دوربین بر اساس هدف نرم‌شده
             const targetCamPos = new THREE.Vector3(
-                cartGroup.position.x + CAMERA_DISTANCE * Math.sin(phi) * Math.sin(theta),
-                cartGroup.position.y + CAMERA_DISTANCE * Math.cos(phi),
-                cartGroup.position.z + CAMERA_DISTANCE * Math.sin(phi) * Math.cos(theta)
+                cameraTargetPos.x + CAMERA_DISTANCE * Math.sin(phi) * Math.sin(theta),
+                cameraTargetPos.y + CAMERA_DISTANCE * Math.cos(phi),
+                cameraTargetPos.z + CAMERA_DISTANCE * Math.sin(phi) * Math.cos(theta)
             );
             
+            // انتقال موقعیت خود دوربین
             camera.position.lerp(targetCamPos, Math.min(CAMERA_LERP_SPEED * dt, 1.0));
             
-            const lookAtTarget = cartGroup.position.clone();
-            lookAtTarget.y += CAMERA_TARGET_Y_OFFSET;
+            // تنظیم زاویه نگاه دوربین به سمت هدف نرم‌شده
+            const lookAtTarget = new THREE.Vector3(
+                cameraTargetPos.x,
+                cameraTargetPos.y + CAMERA_TARGET_Y_OFFSET,
+                cameraTargetPos.z
+            );
+            
             camera.lookAt(lookAtTarget);
 
             checkInteraction();
