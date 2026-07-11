@@ -167,7 +167,38 @@ meta charset="UTF-8">
         // تنظیمات دوربین و عمق میدان
         // ==========================================
         const CAMERA_FOCAL_LENGTH = 100;
-        const CAMERA_DISTANCE = 73;
+// ==========================================
+// تنظیمات داینامیک دوربین
+// ==========================================
+// ==========================================
+// تنظیمات داینامیک دوربین (سه مرحله‌ای)
+// ==========================================
+// ==========================================
+// تنظیمات داینامیک دوربین بر اساس نسبت تصویر (Aspect Ratio)
+// ==========================================
+function calculateCameraDistance() {
+    // محاسبه نسبت تصویر (عرض تقسیم بر ارتفاع)
+    const aspect = window.innerWidth / window.innerHeight;
+    
+    // بازه استاندارد نسبت تصویر
+    const minAspect = 0.6;  // موبایل در حالت عمودی (مثل 9:16)
+    const maxAspect = 1.77; // مانیتور استاندارد دسکتاپ (مثل 16:9)
+    
+    // فاصله‌های دلخواه تو برای این نسبت‌ها
+    const minDist = 40; // زوم برای موبایل
+    const maxDist = 73; // زوم برای مانیتور
+    
+    // محدود کردن نسبت تصویر که از بازه ما بیرون نزنه
+    let clampedAspect = Math.max(minAspect, Math.min(maxAspect, aspect));
+    
+    // محاسبه درصد تغییرات (یه عدد بین 0 تا 1)
+    let ratio = (clampedAspect - minAspect) / (maxAspect - minAspect);
+    
+    // محاسبه فاصله نهایی و دقیق
+    return minDist + (ratio * (maxDist - minDist));
+}
+
+let CAMERA_DISTANCE = calculateCameraDistance();
         const CAMERA_ANGLE_H_DEG = 90; 
         const CAMERA_ANGLE_V_DEG = 84; 
         const CAMERA_TARGET_Y_OFFSET = 4.3; 
@@ -1224,6 +1255,9 @@ meta charset="UTF-8">
         }
 
         function onWindowResize() {
+            // محاسبه مجدد و دقیق فاصله بر اساس عرض جدید دستگاه
+            CAMERA_DISTANCE = calculateCameraDistance(); 
+            
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
