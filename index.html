@@ -1,4 +1,7 @@
-meta charset="UTF-8">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Hot-Rod Clay Shopping Site</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -167,38 +170,22 @@ meta charset="UTF-8">
         // تنظیمات دوربین و عمق میدان
         // ==========================================
         const CAMERA_FOCAL_LENGTH = 100;
-// ==========================================
-// تنظیمات داینامیک دوربین
-// ==========================================
-// ==========================================
-// تنظیمات داینامیک دوربین (سه مرحله‌ای)
-// ==========================================
-// ==========================================
-// تنظیمات داینامیک دوربین بر اساس نسبت تصویر (Aspect Ratio)
-// ==========================================
-function calculateCameraDistance() {
-    // محاسبه نسبت تصویر (عرض تقسیم بر ارتفاع)
-    const aspect = window.innerWidth / window.innerHeight;
-    
-    // بازه استاندارد نسبت تصویر
-    const minAspect = 0.6;  // موبایل در حالت عمودی (مثل 9:16)
-    const maxAspect = 1.77; // مانیتور استاندارد دسکتاپ (مثل 16:9)
-    
-    // فاصله‌های دلخواه تو برای این نسبت‌ها
-    const minDist = 40; // زوم برای موبایل
-    const maxDist = 73; // زوم برای مانیتور
-    
-    // محدود کردن نسبت تصویر که از بازه ما بیرون نزنه
-    let clampedAspect = Math.max(minAspect, Math.min(maxAspect, aspect));
-    
-    // محاسبه درصد تغییرات (یه عدد بین 0 تا 1)
-    let ratio = (clampedAspect - minAspect) / (maxAspect - minAspect);
-    
-    // محاسبه فاصله نهایی و دقیق
-    return minDist + (ratio * (maxDist - minDist));
-}
+        
+        // ==========================================
+        // تنظیمات داینامیک دوربین بر اساس نسبت تصویر (Aspect Ratio)
+        // ==========================================
+        function calculateCameraDistance() {
+            const aspect = window.innerWidth / window.innerHeight;
+            const minAspect = 0.6;  
+            const maxAspect = 1.77; 
+            const minDist = 40; 
+            const maxDist = 73; 
+            let clampedAspect = Math.max(minAspect, Math.min(maxAspect, aspect));
+            let ratio = (clampedAspect - minAspect) / (maxAspect - minAspect);
+            return minDist + (ratio * (maxDist - minDist));
+        }
 
-let CAMERA_DISTANCE = calculateCameraDistance();
+        let CAMERA_DISTANCE = calculateCameraDistance();
         const CAMERA_ANGLE_H_DEG = 90; 
         const CAMERA_ANGLE_V_DEG = 84; 
         const CAMERA_TARGET_Y_OFFSET = 4.3; 
@@ -210,13 +197,11 @@ let CAMERA_DISTANCE = calculateCameraDistance();
         const DOF_APERTURE = 0.008;      
         const DOF_MAX_BLUR = 0.005;      
 
-        // متغیرهای جدید برای محدود کردن حرکت دوربین در محور Z
-        const CAMERA_LIMIT_MIN_Z = -1; // کمترین حد مجاز (عقب‌تر نرود)
-        const CAMERA_LIMIT_MAX_Z = 19;  // بیشترین حد مجاز (جلوتر نرود)
-        // متغیرهای هوشمند برای کنترل حرکت نرم و حذف پرش دوربین
+        const CAMERA_LIMIT_MIN_Z = -1; 
+        const CAMERA_LIMIT_MAX_Z = 19;  
         let cameraTargetPos = new THREE.Vector3();
         let isCameraInitialized = false;
-        const CAMERA_SMOOTH_SPEED = 5.0; // سرعت ترمز نرم و تعقیب (هرچه کمتر باشد، نرم‌تر و کشسانی‌تر می‌شود)
+        const CAMERA_SMOOTH_SPEED = 5.0; 
 
         // ==========================================
         // تنظیمات محیط و اشیاء
@@ -232,17 +217,16 @@ let CAMERA_DISTANCE = calculateCameraDistance();
         const AUTO_FIT_ENV = true; 
         const CART_POS_Y = 0.1;
         
-        // مختصات شروع حرکت سبد 
         const CART_START_X = 12;
         const CART_START_Z = 20;
 
-        // نام فایلی که شامل درخت‌ها، بوته‌ها، رگال و دستگاه پز است
         const PROPS_GLB_NAME = 'props.glb';
         
         const START_IMAGE_WIDTH = 320; const START_IMAGE_BOTTOM = 15; const START_IMAGE_HOVER_SCALE = 1.05;
         const StandardColorSpace = THREE.sRGBEncoding;
+
         // ==========================================
-        // متغیرهای فیزیک، سبد و برخورد (اصلاح شده به سیستم Raycast)
+        // متغیرهای فیزیک، سبد و برخورد
         // ==========================================
         let raycastTimer = 0;               
         let currentSteerAngle = 0; 
@@ -255,6 +239,10 @@ let CAMERA_DISTANCE = calculateCameraDistance();
         
         let composer, bokehPass;
         let cartInitialSnapped = false; 
+
+        // متغیرهای مربوط به تایرهای سبد برای چرخش واقعی
+        let cartWheels = []; 
+        const WHEEL_RADIUS = 0.2; // شعاع فرضی تایرها برای محاسبه سرعت چرخش مناسب
 
         function applyStartSettings() {
             const container = document.getElementById('start-ui-container');
@@ -283,7 +271,7 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                 };
             }
         }
-        
+
         function preloadIntroAssets() {
             const bgImg = new Image();
             bgImg.src = 'BG.jpg';
@@ -575,7 +563,6 @@ let CAMERA_DISTANCE = calculateCameraDistance();
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xaad8e6);
-            //scene.fog = new THREE.Fog(0xaad8e6, 20, 10);
 
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
             camera.setFocalLength(CAMERA_FOCAL_LENGTH);
@@ -612,10 +599,6 @@ let CAMERA_DISTANCE = calculateCameraDistance();
             window.addEventListener('resize', onWindowResize, false);
         }
 
-        // ==========================================
-        // این تابع اصلاح شد تا Mipmapping را خاموش کند
-        // و مشکل خطوط و باگ‌های تکسچرهای بیک‌شده برطرف شود.
-        // ==========================================
         function applyBakedMaterial(object) {
             object.traverse((child) => {
                 if (child.isMesh) {
@@ -624,20 +607,18 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                             const map = mat.map || mat.emissiveMap;
                             if (map) {
                                 map.generateMipmaps = false;
-                                map.minFilter = THREE.LinearFilter; // بازگشت به Linear برای نرمی
+                                map.minFilter = THREE.LinearFilter; 
                                 map.magFilter = THREE.LinearFilter;
                                 map.wrapS = THREE.ClampToEdgeWrapping;
                                 map.wrapT = THREE.ClampToEdgeWrapping;
                                 map.needsUpdate = true;
                             }
                             
-                            // اصلاح اصلی برای حذف خطوط لبه:
-                            // استفاده از AlphaTest برای حذف پیکسل‌های نیمه‌شفاف حاشیه
                             return new THREE.MeshBasicMaterial({
                                 map: map,
                                 color: map ? 0xffffff : mat.color,
-                                transparent: true, // همیشه شفافیت را فعال نگه می‌داریم
-                                alphaTest: 0.8,    // این مقدار بحرانی است: پیکسل‌های با شفافیت زیر 0.5 حذف می‌شوند
+                                transparent: true, 
+                                alphaTest: 0.8,    
                                 side: THREE.FrontSide
                             });
                         };
@@ -684,14 +665,11 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                 envModel.traverse((child) => {
                     if (child.isMesh) {
                         const name = child.name.toLowerCase();
-                        // بررسی سنگ‌ها و علف‌ها برای رد شدن سبد از درونشان
                         const isGrass = name.includes('grass') || name.includes('bush') || name.includes('plant') || name.includes('flower') || name.includes('weed') || name.includes('rock') || name.includes('stone');
                         
-                        // اضافه کردن به سیستم مانع (برای دیوارها، درخت‌ها و غیره)
                         if(name.includes('1tree') || name.includes('wall') || name.includes('collider') || name.includes('obstacle') || name.includes('bound')) {
                             obstacleMeshes.push(child);
                             
-                            // نامرئی کردن دیوارهای نامرئی در بازی
                             if(name.includes('wall') || name.includes('collider') || name.includes('bound')) {
                                 child.visible = false;
                             }
@@ -725,7 +703,6 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                                 posMachine = child;
                                 isPropObstacle = true;
                             }
-                            // ایستر اگ (Post)
                             if (name.includes('post')) {
                                 postMachine = child;
                                 isPropObstacle = true;
@@ -813,6 +790,19 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                 const wrapper = new THREE.Group();
                 applyBakedMaterial(gltf.scene);
 
+                // --- بخش جدید: استخراج تایرهای سبد برای اعمال چرخش داینامیک ---
+                gltf.scene.traverse((child) => {
+                    if (child.isMesh) {
+                        const name = child.name.toLowerCase();
+                        // بررسی و استخراج تایرهای جلو و عقب که نامگذاری شده‌اند
+                        if (name.includes('wheel_fl') || name.includes('wheel_fr') || 
+                            name.includes('wheel_bl') || name.includes('wheel_br')) {
+                            cartWheels.push(child);
+                        }
+                    }
+                });
+                // -------------------------------------------------------------
+
                 wrapper.add(gltf.scene);
                 normalCartModel = wrapper;
                 fitModelToCart(normalCartModel);
@@ -861,19 +851,16 @@ let CAMERA_DISTANCE = calculateCameraDistance();
             document.addEventListener('keydown', (e) => {
                 if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = true;
                 if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true;
-                // تشخیص دکمه‌های A و D (چپ و راست) حذف شد
             });
             document.addEventListener('keyup', (e) => {
                 if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false;
                 if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false;
-                // تشخیص دکمه‌های A و D (چپ و راست) حذف شد
             });
 
             const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
             if (isMobile) {
                 document.getElementById('joystick-zone').style.display = 'block';
                 
-                // ۱. ویژگی axis: 'y' اضافه شد تا حرکت ظاهری فقط عمودی شود
                 const options = { 
                     zone: document.getElementById('joystick-zone'), 
                     mode: 'static', 
@@ -885,7 +872,6 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                 
                 const manager = nipplejs.create(options);
                 manager.on('move', (evt, data) => { 
-                    // ۲. مقدار x را همیشه 0 قرار می‌دهیم تا حرکت فقط جلو/عقب باشد
                     joystickMove.x = 0; 
                     joystickMove.y = Math.sin(data.angle.radian) * Math.min(data.distance / 50, 1); 
                 });
@@ -973,14 +959,12 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                 checkInteraction();
             });
 
-            // سیستم کلیک روی ایستر اگ (Post)
             const clickRaycaster = new THREE.Raycaster();
             const mouseVector = new THREE.Vector2();
 
             window.addEventListener('pointerdown', (event) => {
                 if (isModalOpen || !postMachine || !camera) return;
                 
-                // نادیده گرفتن کلیک روی رابط کاربری
                 if (event.target.closest('#ui-layer') && !event.target.id.includes('canvas')) return;
 
                 mouseVector.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -993,7 +977,6 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                     const postWorldPos = new THREE.Vector3();
                     postMachine.getWorldPosition(postWorldPos);
                     
-                    // فقط اگر کاربر نزدیک به پست باشد مودال باز می‌شود
                     if (cartGroup && cartGroup.position.distanceTo(postWorldPos) < 10.0) {
                         interactionPrompt.style.display = 'none';
                         modalBackdrop.style.display = 'block';
@@ -1083,13 +1066,12 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                 if (Math.abs(velocity.x) < 0.1 && moveX === 0) velocity.x = 0;
                 if (Math.abs(velocity.z) < 0.1 && moveZ === 0) velocity.z = 0;
 
-                const cartRadius = 0.4; // شعاع برخورد با اشیاء
+                const cartRadius = 0.4; 
                 const rayOrigin = cartGroup.position.clone();
-                rayOrigin.y += 0.5; // پرتاب اشعه از نیم متری زمین برای رد شدن از پستی بلندی‌های کوچک
+                rayOrigin.y += 0.5; 
                 
                 let testPosX = cartGroup.position.x + velocity.x * dt;
                 
-                // سیستم برخورد لیزری برای محور X
                 if (Math.abs(velocity.x) > 0.001) {
                     const dirX = new THREE.Vector3(Math.sign(velocity.x), 0, 0);
                     reusableRaycaster.set(rayOrigin, dirX);
@@ -1107,7 +1089,6 @@ let CAMERA_DISTANCE = calculateCameraDistance();
 
                 let testPosZ = cartGroup.position.z + velocity.z * dt;
                 
-                // سیستم برخورد لیزری برای محور Z
                 if (Math.abs(velocity.z) > 0.001) {
                     const dirZ = new THREE.Vector3(0, 0, Math.sign(velocity.z));
                     reusableRaycaster.set(rayOrigin, dirZ);
@@ -1123,7 +1104,6 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                 }
                 cartGroup.position.z = testPosZ;
 
-                // ----- منطق فیزیک سطح (رفع مشکل فرورفتن در زمین) -----
                 if (environmentMeshes.length > 0) {
                     if (!cartInitialSnapped) {
                         reusableRaycaster.set(new THREE.Vector3(cartGroup.position.x, 100, cartGroup.position.z), downVector);
@@ -1178,7 +1158,30 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                         cartGroup.quaternion.setFromRotationMatrix(matrix);
                     }
                 }
-                // ---------------------------------------------------
+
+                // ==============================================
+                // منطق چرخش تایرها (اضافه شده)
+                // ==============================================
+                const currentSpeed = velocity.length();
+                if (currentSpeed > 0.01 && cartWheels.length > 0) {
+                    // بررسی می‌کنیم سبد رو به جلو می‌رود یا عقب
+                    const forwardVector = new THREE.Vector3(Math.sin(currentSteerAngle), 0, Math.cos(currentSteerAngle));
+                    const movementDir = velocity.clone().normalize();
+                    // اگر ضرب داخلی مثبت باشد یعنی در جهت زاویه سبد (جلو) حرکت می‌کند
+                    const moveDirectionSign = movementDir.dot(forwardVector) >= 0 ? 1 : -1;
+                    
+                    // فرمول ریاضی: مسافت طی شده = سرعت * زمان (dt)
+                    // زاویه چرخش (رادیان) = مسافت / شعاع تایر
+                    const rotationAngle = (currentSpeed * dt / WHEEL_RADIUS) * moveDirectionSign;
+                    
+                    cartWheels.forEach(wheel => {
+                        // چرخش به دور محور Xِ خود تایر.
+                        // معمولاً در اکسپورت‌ها، چرخ‌ها حول X می‌چرخند. 
+                        // اگر تایرها برعکس چرخیدند، علامت منفی را بردارید.
+                        wheel.rotateX(-rotationAngle);
+                    });
+                }
+                // ==============================================
 
                 const isSpeeding = velocity.lengthSq() > 0.5;
                 if (isSpeeding) {
@@ -1197,20 +1200,16 @@ let CAMERA_DISTANCE = calculateCameraDistance();
             const theta = CAMERA_ANGLE_H_DEG * (Math.PI / 180); 
             const phi = CAMERA_ANGLE_V_DEG * (Math.PI / 180);   
             
-            // مقداردهی اولیه در فریم اول برای جلوگیری از اختلال مختصات
             if (!isCameraInitialized && cartGroup) {
                 cameraTargetPos.copy(cartGroup.position);
                 isCameraInitialized = true;
             }
 
-            // تعریف نقطه هدف ایده‌آل برای این فریم
             let idealTarget = new THREE.Vector3();
 
             if (cartGroup.position.z >= CAMERA_LIMIT_MIN_Z && cartGroup.position.z <= CAMERA_LIMIT_MAX_Z) {
-                // الف) داخل محدوده: هدف دوربین، تعقیب کامل سبد در هر ۳ محور است
                 idealTarget.copy(cartGroup.position);
             } else {
-                // ب) خارج از محدوده: Z روی مرز قفل می‌شود و X و Y روی آخرین موقعیت معتبر خود ثابت می‌مانند
                 idealTarget.set(
                     cameraTargetPos.x, 
                     cameraTargetPos.y, 
@@ -1218,22 +1217,16 @@ let CAMERA_DISTANCE = calculateCameraDistance();
                 );
             }
 
-            // خط جادویی: لِرپ کردنِ خودِ نقطه تمرکز با سرعت ملایم 6.0
-            // این خط باعث می‌شود وقتی سبد ناگهانی وارد محدوده می‌شود دوربین نپرد، 
-            // و وقتی به لیمیت می‌رسد، هدف آرام آرام سرعتش کم شده و ترمز نرم بزند.
             cameraTargetPos.lerp(idealTarget, Math.min(CAMERA_SMOOTH_SPEED * dt, 1.0));
 
-            // محاسبه موقعیت نهایی دوربین بر اساس هدف نرم‌شده
             const targetCamPos = new THREE.Vector3(
                 cameraTargetPos.x + CAMERA_DISTANCE * Math.sin(phi) * Math.sin(theta),
                 cameraTargetPos.y + CAMERA_DISTANCE * Math.cos(phi),
                 cameraTargetPos.z + CAMERA_DISTANCE * Math.sin(phi) * Math.cos(theta)
             );
             
-            // انتقال موقعیت خود دوربین
             camera.position.lerp(targetCamPos, Math.min(CAMERA_LERP_SPEED * dt, 1.0));
             
-            // تنظیم زاویه نگاه دوربین به سمت هدف نرم‌شده
             const lookAtTarget = new THREE.Vector3(
                 cameraTargetPos.x,
                 cameraTargetPos.y + CAMERA_TARGET_Y_OFFSET,
@@ -1255,7 +1248,6 @@ let CAMERA_DISTANCE = calculateCameraDistance();
         }
 
         function onWindowResize() {
-            // محاسبه مجدد و دقیق فاصله بر اساس عرض جدید دستگاه
             CAMERA_DISTANCE = calculateCameraDistance(); 
             
             camera.aspect = window.innerWidth / window.innerHeight;
