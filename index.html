@@ -104,6 +104,11 @@
             <span class="font-bold text-lg text-gray-900 drop-shadow-md">guest</span>
         </div>
 
+        <!-- PNG منتقل شد به بالا و وسط -->
+        <img src="cartblaze.png" class="absolute top-5 left-1/2 -translate-x-1/2 w-32 pointer-events-none opacity-90 drop-shadow-md" alt="Cart Blaze" onerror="this.style.display='none'">
+
+        <!-- متن سمت چپ پایین حذف شد -->
+
         <div class="absolute top-5 right-5 flex items-center gap-4 pointer-events-auto">
             <span id="hud-amount" class="font-bold text-sm text-gray-800 tracking-wider">amount: $0</span>
             <div class="relative cursor-pointer hover:scale-105 transition-transform">
@@ -113,9 +118,6 @@
                 <div id="hud-cart-badge" class="absolute -bottom-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white font-bold border-2 border-transparent shadow-sm">0</div>
             </div>
         </div>
-
-        <img src="cartblaze.png" class="absolute bottom-5 right-5 w-32 pointer-events-none opacity-90 drop-shadow-md" alt="Cart Blaze" onerror="this.style.display='none'">
-        <div class="absolute bottom-5 left-5 font-semibold text-gray-100 drop-shadow-md pointer-events-none tracking-wider text-sm">cartblaze.store</div>
 
         <div id="joystick-zone"></div>
         <div id="modal-backdrop"></div>
@@ -171,9 +173,6 @@
         // ==========================================
         const CAMERA_FOCAL_LENGTH = 100;
         
-        // ==========================================
-        // تنظیمات داینامیک دوربین بر اساس نسبت تصویر (Aspect Ratio)
-        // ==========================================
         function calculateCameraDistance() {
             const aspect = window.innerWidth / window.innerHeight;
             const minAspect = 0.6;  
@@ -217,7 +216,7 @@
         const AUTO_FIT_ENV = true; 
         const CART_POS_Y = 0.1;
         
-        const CART_START_X = 2;
+        const CART_START_X = 1;
         const CART_START_Z = 18;
 
         const PROPS_GLB_NAME = 'props.glb';
@@ -240,9 +239,8 @@
         let composer, bokehPass;
         let cartInitialSnapped = false; 
 
-        // متغیرهای مربوط به تایرهای سبد برای چرخش واقعی
         let cartWheels = []; 
-        const WHEEL_RADIUS = 0.2; // شعاع فرضی تایرها برای محاسبه سرعت چرخش مناسب
+        const WHEEL_RADIUS = 0.2;
 
         function applyStartSettings() {
             const container = document.getElementById('start-ui-container');
@@ -491,8 +489,8 @@
             document.getElementById('hud-cart-badge').innerText = totalCartItems;
         }
 
-        const FIRE_OFFSET_X = 0.2; const FIRE_OFFSET_Y = 0.9; const FIRE_OFFSET_Z = 0;    
-        const FIRE_SCALE = 2.4;     
+        const FIRE_OFFSET_X = 0.2; const FIRE_OFFSET_Y = 0.9; const FIRE_OFFSET_Z = -0.3;    
+        const FIRE_SCALE = 2;     
 
         function showError(msg) {
             const errLog = document.getElementById('error-log');
@@ -505,9 +503,8 @@
         
         let clothingRack = null; 
         let posMachine = null;
-        let postMachine = null; // برای ایستر اگ
+        let postMeshes = []; // تغییر به آرایه برای تشخیص کلیک روی تمامی قطعات صندوق پست
         
-        // سیستم لیزری (Raycast) به جای Box
         let obstacleMeshes = []; 
         let environmentMeshes = []; 
         
@@ -682,7 +679,6 @@
                 environmentGroup.add(envModel);
                 envLoaded = true; 
 
-                // --- لود کردن فایل ترکیبی اشیاء ---
                 loader.load(PROPS_GLB_NAME, function (propsGltf) {
                     const propsModel = propsGltf.scene;
                     applyBakedMaterial(propsModel);
@@ -699,12 +695,12 @@
                                 clothingRack = child;
                                 isPropObstacle = true;
                             }
-                            if (name.includes('pos') || name.includes('cash') || name.includes('checkout')) {
+                            if (name.includes('poz') || name.includes('cash') || name.includes('checkout')) {
                                 posMachine = child;
                                 isPropObstacle = true;
                             }
-                            if (name.includes('post')) {
-                                postMachine = child;
+                            if (name.includes('post') || name.includes('mail') || name.includes('letter')) {
+                                postMeshes.push(child); // ذخیره تمام قطعات صندوق پست
                                 isPropObstacle = true;
                             }
                             if (name.includes('1tree') || name.includes('collider') || name.includes('obstacle') || name.includes('wall')) {
@@ -756,7 +752,7 @@
             
             const scale = FIRE_SCALE / maxDim; 
             model.scale.setScalar(scale);
-
+            
             const scaledBox = new THREE.Box3().setFromObject(model);
             const center = scaledBox.getCenter(new THREE.Vector3());
             model.position.x -= center.x;
@@ -768,7 +764,7 @@
             model.position.y += FIRE_OFFSET_Y;
             model.position.z += FIRE_OFFSET_Z;
             
-            model.rotation.y = Math.PI / 2; 
+            model.rotation.y = Math.PI / 1; 
         }
 
         function createCart() {
@@ -790,18 +786,15 @@
                 const wrapper = new THREE.Group();
                 applyBakedMaterial(gltf.scene);
 
-                // --- بخش جدید: استخراج تایرهای سبد برای اعمال چرخش داینامیک ---
                 gltf.scene.traverse((child) => {
                     if (child.isMesh) {
                         const name = child.name.toLowerCase();
-                        // بررسی و استخراج تایرهای جلو و عقب که نامگذاری شده‌اند
                         if (name.includes('wheel_fl') || name.includes('wheel_fr') || 
                             name.includes('wheel_bl') || name.includes('wheel_br')) {
                             cartWheels.push(child);
                         }
                     }
                 });
-                // -------------------------------------------------------------
 
                 wrapper.add(gltf.scene);
                 normalCartModel = wrapper;
@@ -963,21 +956,28 @@
             const mouseVector = new THREE.Vector2();
 
             window.addEventListener('pointerdown', (event) => {
-                if (isModalOpen || !postMachine || !camera) return;
+                if (isModalOpen || postMeshes.length === 0 || !camera) return;
                 
-                if (event.target.closest('#ui-layer') && !event.target.id.includes('canvas')) return;
+                // جلوگیری از تداخل کلیک با دکمه‌ها و جوی‌استیک به جای بلاک کردن کل صفحه
+                if (event.target.tagName === 'BUTTON' || 
+                    event.target.closest('.modern-pill') || 
+                    event.target.closest('#joystick-zone') || 
+                    event.target.closest('.modern-modal')) {
+                    return;
+                }
 
                 mouseVector.x = (event.clientX / window.innerWidth) * 2 - 1;
                 mouseVector.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
                 clickRaycaster.setFromCamera(mouseVector, camera);
 
-                const intersects = clickRaycaster.intersectObject(postMachine, true);
+                // بررسی برخورد با تمامی قطعات صندوق پست
+                const intersects = clickRaycaster.intersectObjects(postMeshes, true);
                 if (intersects.length > 0) {
-                    const postWorldPos = new THREE.Vector3();
-                    postMachine.getWorldPosition(postWorldPos);
+                    const hitPoint = intersects[0].point; // نقطه دقیق کلیک
                     
-                    if (cartGroup && cartGroup.position.distanceTo(postWorldPos) < 10.0) {
+                    // بررسی فاصله سبد خرید تا نقطه‌ای که کلیک شده (فاصله مجاز افزایش یافت)
+                    if (cartGroup && cartGroup.position.distanceTo(hitPoint) < 25.0) {
                         interactionPrompt.style.display = 'none';
                         modalBackdrop.style.display = 'block';
                         easterEggModal.style.display = 'flex';
@@ -1005,8 +1005,8 @@
             }
             
             interactionPrompt.style.display = 'none'; btnOpenShop.style.display = 'none'; btnOpenPos.style.display = 'none';
-            if (distRack < 11.35) { interactionPrompt.style.display = 'block'; btnOpenShop.style.display = 'block'; } 
-            else if (distPos < 6.0) { interactionPrompt.style.display = 'block'; btnOpenPos.style.display = 'block'; }
+            if (distRack < 12) { interactionPrompt.style.display = 'block'; btnOpenShop.style.display = 'block'; } 
+            else if (distPos < 7) { interactionPrompt.style.display = 'block'; btnOpenPos.style.display = 'block'; }
         }
 
         function igniteCart() {
@@ -1102,6 +1102,21 @@
                         testPosZ = cartGroup.position.z;
                     }
                 }
+
+                // --- جلوگیری از عبور سبد از دستگاه poz (تغییر جدید) ---
+                if (posMachine) {
+                    const pPos = new THREE.Vector3();
+                    posMachine.getWorldPosition(pPos);
+                    
+                    // از آنجایی که سبد از عمق مثبت به سمت منفی (در محور Z) حرکت می‌کند:
+                    const pozZLimit = pPos.z + 2.5; // یک حریم ۲.۵ واحدی جلوی پوز تنظیم شده است
+                    if (testPosZ < pozZLimit) {
+                        velocity.z = 0; // توقف حرکت در محور Z
+                        testPosZ = pozZLimit;
+                    }
+                }
+                // --------------------------------------------------------
+
                 cartGroup.position.z = testPosZ;
 
                 if (environmentMeshes.length > 0) {
@@ -1159,29 +1174,17 @@
                     }
                 }
 
-                // ==============================================
-                // منطق چرخش تایرها (اضافه شده)
-                // ==============================================
                 const currentSpeed = velocity.length();
                 if (currentSpeed > 0.01 && cartWheels.length > 0) {
-                    // بررسی می‌کنیم سبد رو به جلو می‌رود یا عقب
                     const forwardVector = new THREE.Vector3(Math.sin(currentSteerAngle), 0, Math.cos(currentSteerAngle));
                     const movementDir = velocity.clone().normalize();
-                    // اگر ضرب داخلی مثبت باشد یعنی در جهت زاویه سبد (جلو) حرکت می‌کند
                     const moveDirectionSign = movementDir.dot(forwardVector) >= 0 ? 1 : -1;
-                    
-                    // فرمول ریاضی: مسافت طی شده = سرعت * زمان (dt)
-                    // زاویه چرخش (رادیان) = مسافت / شعاع تایر
                     const rotationAngle = (currentSpeed * dt / WHEEL_RADIUS) * moveDirectionSign;
                     
                     cartWheels.forEach(wheel => {
-                        // چرخش به دور محور Xِ خود تایر.
-                        // معمولاً در اکسپورت‌ها، چرخ‌ها حول X می‌چرخند. 
-                        // اگر تایرها برعکس چرخیدند، علامت منفی را بردارید.
                         wheel.rotateX(-rotationAngle);
                     });
                 }
-                // ==============================================
 
                 const isSpeeding = velocity.lengthSq() > 0.5;
                 if (isSpeeding) {
