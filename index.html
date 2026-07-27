@@ -21,6 +21,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.0/nipplejs.min.js"></script>
 
     <style>
+        :root {
+            /* متغیر کنترل سایز دکمه‌های تصویری (فروشگاه و پرداخت) */
+            /* برای تغییر سایز عکس‌های store.png و checkout.png این مقدار را تغییر دهید */
+            --action-btn-size: 200px; 
+        }
+
         body, html {
             margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%;
             background-color: #87CEEB; font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif; touch-action: none;
@@ -54,6 +60,24 @@
         }
         .modern-pill:hover { transform: scale(1.05); }
 
+        /* استایل‌های مربوط به دکمه‌های تصویری (store.png و checkout.png) */
+        .action-img-btn {
+            width: var(--action-btn-size);
+            height: auto;
+            max-width: 45vw; /* ریسپانسیو بودن در موبایل (حداکثر 45 درصد عرض صفحه) */
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3)); /* سایه جذاب */
+            pointer-events: auto;
+        }
+        .action-img-btn:hover {
+            transform: scale(1.08) translateY(-5px); /* افکت بزرگ‌نمایی و حرکت به بالا */
+            filter: drop-shadow(0 15px 25px rgba(0,0,0,0.4));
+        }
+        .action-img-btn:active {
+            transform: scale(0.95);
+        }
+
         #modal-backdrop { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: 40; display: none; pointer-events: auto; }
         #interaction-prompt { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; text-align: center; }
 
@@ -73,6 +97,16 @@
         }
         .group:hover .slider-btn { opacity: 1; }
         .slider-btn:hover { background: rgba(255, 255, 255, 0.95); transform: scale(1.1); }
+
+        /* انیمیشن پاپ‌آپ برای ظاهر شدن دکمه‌ها */
+        @keyframes popIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            60% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .pop-animation {
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
     </style>
 </head>
 <body>
@@ -121,9 +155,10 @@
         <div id="joystick-zone"></div>
         <div id="modal-backdrop"></div>
 
+        <!-- تغییرات جدید: جایگزینی دکمه‌های متنی با تگ‌های تصویر و اعمال کلاس اکشن دکمه -->
         <div id="interaction-prompt">
-            <button id="btn-open-shop" class="modern-pill px-6 py-3 text-sm font-bold tracking-wide">Inspect Rack</button>
-            <button id="btn-open-pos" class="modern-pill px-6 py-3 text-sm font-bold tracking-wide" style="display: none;">Checkout</button>
+            <img id="btn-open-shop" src="store.png" class="action-img-btn" alt="Inspect Rack" onerror="this.onerror=null; this.src='https://placehold.co/130x130/f4ecd8/111827?text=Store';">
+            <img id="btn-open-pos" src="checkout.png" class="action-img-btn" alt="Checkout" style="display: none;" onerror="this.onerror=null; this.src='https://placehold.co/130x130/f4ecd8/111827?text=Checkout';">
         </div>
 
         <!-- Shopping Modal -->
@@ -560,6 +595,7 @@
         const cartSqueakAudio = document.getElementById('cart-squeak');
         cartSqueakAudio.volume = 0.8;
         let isMoving = false, isModalOpen = false;
+        let activePrompt = null; // متغیری برای ذخیره وضعیت فعلی دکمه‌های بازشونده
 
         const clock = new THREE.Clock();
 
@@ -985,6 +1021,7 @@
                 
                 if (event.target.tagName === 'BUTTON' || 
                     event.target.closest('.modern-pill') || 
+                    event.target.closest('.action-img-btn') || 
                     event.target.closest('#joystick-zone') || 
                     event.target.closest('.modern-modal')) {
                     return;
@@ -1010,7 +1047,16 @@
         }
 
         function checkInteraction() {
-            if(!cartGroup || isModalOpen) return;
+            if(!cartGroup || isModalOpen) {
+                // اگر منویی باز شد، دکمه‌ها موقتا پنهان می‌شوند تا در برگشت دوباره پاپ‌آپ شوند
+                if (activePrompt !== null) {
+                    interactionPrompt.style.display = 'none';
+                    btnOpenShop.style.display = 'none';
+                    btnOpenPos.style.display = 'none';
+                    activePrompt = null;
+                }
+                return;
+            }
             
             let distRack = 999;
             let distPos = 999;
@@ -1026,9 +1072,33 @@
                 distPos = cartGroup.position.distanceTo(pPos);
             }
             
-            interactionPrompt.style.display = 'none'; btnOpenShop.style.display = 'none'; btnOpenPos.style.display = 'none';
-            if (distRack < 12) { interactionPrompt.style.display = 'block'; btnOpenShop.style.display = 'block'; } 
-            else if (distPos < 7) { interactionPrompt.style.display = 'block'; btnOpenPos.style.display = 'block'; }
+            let newPrompt = null;
+            if (distRack < 12) newPrompt = 'shop';
+            else if (distPos < 7) newPrompt = 'pos';
+            
+            // فقط زمانی که وضعیت تغییر می‌کند انیمیشن را اعمال کن (جلوگیری از ریست مداوم در ۶۰ فریم بر ثانیه)
+            if (newPrompt !== activePrompt) {
+                interactionPrompt.style.display = 'none'; 
+                btnOpenShop.style.display = 'none'; 
+                btnOpenPos.style.display = 'none';
+                
+                btnOpenShop.classList.remove('pop-animation');
+                btnOpenPos.classList.remove('pop-animation');
+
+                if (newPrompt === 'shop') { 
+                    interactionPrompt.style.display = 'block'; 
+                    btnOpenShop.style.display = 'block';
+                    void btnOpenShop.offsetWidth; // تکنیکی برای اجبار به ریفرش شدن و شروع مجدد انیمیشن
+                    btnOpenShop.classList.add('pop-animation');
+                } 
+                else if (newPrompt === 'pos') { 
+                    interactionPrompt.style.display = 'block'; 
+                    btnOpenPos.style.display = 'block';
+                    void btnOpenPos.offsetWidth; // ریفرش انیمیشن
+                    btnOpenPos.classList.add('pop-animation');
+                }
+                activePrompt = newPrompt;
+            }
         }
 
         function igniteCart() {
