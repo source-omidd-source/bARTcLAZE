@@ -818,9 +818,22 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
             btn.style.width = START_IMAGE_WIDTH + 'px'; btn.style.height = 'auto'; 
             btn.onmouseenter = () => { if(!isStartClicked) btn.style.transform = `scale(${START_IMAGE_HOVER_SCALE})`; };
             btn.onmouseleave = () => { if(!isStartClicked) btn.style.transform = 'scale(1)'; };
+            
+            // بخش کلیک تغییر کرده تا قفل صدای آیفون باز بشه
             btn.onclick = () => {
-                isStartClicked = true; btn.style.opacity = '0';
+                // 1. باز کردن قفل صدا
+                cartSqueakAudio.play().then(() => {
+                    cartSqueakAudio.pause();
+                    cartSqueakAudio.currentTime = 0;
+                }).catch(err => {
+                    console.warn("Audio unlock failed:", err);
+                });
+    
+                // 2. بقیه کدهای استارت
+                isStartClicked = true; 
+                btn.style.opacity = '0';
                 setTimeout(() => btn.style.display = 'none', 300);
+                
                 if(isEngineLoaded) startGame();
                 else document.getElementById('loading-container').classList.remove('hidden');
             };
