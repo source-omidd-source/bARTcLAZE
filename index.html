@@ -309,7 +309,7 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
     </div>
 
     <!-- MAIN LOGO (Responsive positioning) -->
-    <img src="cartblaze.png" class="absolute top-14 md:top-5 left-1/2 -translate-x-1/2 w-32 pointer-events-none opacity-90 drop-shadow-md transition-all" alt="Cart Blaze" onerror="this.style.display='none'">
+    <img src="cartblaze.png" class="absolute top-20 md:top-5 left-1/2 -translate-x-1/2 w-32 pointer-events-none opacity-90 drop-shadow-md transition-all" alt="Cart Blaze" onerror="this.style.display='none'">
 
     <!-- HUD Cart Section -->
     <div class="absolute top-3 right-5 flex items-center gap-4 pointer-events-auto" onclick="toast('CHECKOUT IS AT THE POS MACHINE! 🏃‍♂️', true)">
@@ -1246,7 +1246,7 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
             if (Math.abs(velocity.z) > 0.01 && cartWheels.length > 0) {
                 // Since mesh visually rotates 180 degrees when going backward,
                 // the wheels should always spin forward relative to the mesh itself.
-                cartWheels.forEach(wheel => wheel.rotateX(-(Math.abs(velocity.z) * dt / WHEEL_RADIUS)));
+                cartWheels.forEach(wheel => wheel.rotateX((Math.abs(velocity.z) * dt / WHEEL_RADIUS)));
             }
 
             if (Math.abs(velocity.z) > 0.5) { if (!isMoving) { cartSqueakAudio.play().catch(e => {}); isMoving = true; } } 
