@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>CARTBLAZE® — VOL.06 CONCRETE SEASON</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Rubik+Spray+Paint&display=swap" rel="stylesheet">
@@ -13,8 +13,6 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-<!-- Nipple.js for Virtual Joystick -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.0/nipplejs.min.js"></script>
 
 <style>
 /* =========================================================
@@ -34,14 +32,42 @@
 
 body, html {
   margin: 0; padding: 0; overflow-x: hidden; width: 100%; height: 100%;
-  background-color: #87CEEB; font-family: 'Inter', system-ui, sans-serif; touch-action: none;
+  background-color: #87CEEB; font-family: 'Inter', system-ui, sans-serif; 
+  touch-action: none; overscroll-behavior: none; /* جلوگیری از رفرش صفحه در موبایل */
 }
 body.lock { overflow: hidden; }
 
 /* 3D Canvas Elements */
 #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
 #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-#joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px; pointer-events: auto; display: none; z-index: 10 !important; }
+
+/* Modern Minimal Circular Joystick */
+#modern-joystick {
+    position: absolute; bottom: 35px; left: 35px; width: 120px; height: 120px;
+    background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-radius: 50%; border: 1px solid rgba(255,255,255,0.4);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    display: none; pointer-events: auto; z-index: 20 !important;
+}
+/* Subtle track line to indicate 1-axis movement */
+#modern-joystick::before {
+    content: ''; position: absolute; top: 18%; bottom: 18%; left: 50%; transform: translateX(-50%);
+    width: 3px; background: rgba(255,255,255,0.25); border-radius: 2px; pointer-events: none;
+}
+#modern-knob {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75));
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15), inset 0 2px 4px rgba(255,255,255,1);
+    transition: transform 0.05s linear; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+}
+/* Little dot inside the knob */
+#modern-knob::after {
+    content: ''; width: 12px; height: 12px; border-radius: 50%;
+    background: rgba(0,0,0,0.1);
+}
+
 #interaction-prompt { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; text-align: center; }
 #error-log { color: #d32f2f; background: #ffebee; padding: 10px; border-radius: 8px; margin-top: 20px; font-family: monospace; text-align: left; max-width: 80%; display: none; pointer-events: auto; z-index: 99999; position: relative; }
 
@@ -282,11 +308,12 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
         <span class="font-bold text-lg text-gray-900 drop-shadow-md">guest</span>
     </div>
 
-    <img src="cartblaze.png" class="absolute top-5 left-1/2 -translate-x-1/2 w-32 pointer-events-none opacity-90 drop-shadow-md" alt="Cart Blaze" onerror="this.style.display='none'">
+    <!-- MAIN LOGO (Responsive positioning) -->
+    <img src="cartblaze.png" class="absolute top-14 md:top-5 left-1/2 -translate-x-1/2 w-32 pointer-events-none opacity-90 drop-shadow-md transition-all" alt="Cart Blaze" onerror="this.style.display='none'">
 
     <!-- HUD Cart Section -->
     <div class="absolute top-3 right-5 flex items-center gap-4 pointer-events-auto" onclick="toast('CHECKOUT IS AT THE POS MACHINE! 🏃‍♂️', true)">
-        <span id="hud-amount" class="font-bold text-sm text-gray-800 tracking-wider">amount: $0</span>
+        <span id="hud-amount" class="font-bold text-sm text-gray-800 tracking-wider">cart: $0</span>
         <div class="relative cursor-pointer hover:scale-105 transition-transform">
             <div class="w-13 h-13 bg-white rounded-full flex items-center justify-center border-1 border-black shadow-sm overflow-hidden">
                 <img id="hud-cart-icon" src="Cart.png" class="w-12 h-12 object-contain" alt="Cart" onerror="this.style.display='none'">
@@ -295,7 +322,11 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
         </div>
     </div>
 
-    <div id="joystick-zone"></div>
+    <!-- Modern Custom Circular Joystick -->
+    <div id="modern-joystick">
+        <div id="modern-knob"></div>
+    </div>
+
     <div id="modal-backdrop"></div>
 
     <!-- Interaction Prompt Buttons -->
@@ -507,7 +538,8 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
         if($('cnum')) $('cnum').textContent = q;
         if($('bnum')) $('bnum').textContent = q;
         
-        if($('hud-amount')) $('hud-amount').innerText = `amount: $${sub()}`;
+        // Changed "amount" to "cart"
+        if($('hud-amount')) $('hud-amount').innerText = `cart: $${sub()}`;
         if($('hud-cart-badge')) $('hud-cart-badge').innerText = q;
         const cartIcon = $('hud-cart-icon');
         if(cartIcon) cartIcon.src = q > 0 ? 'Cart1.png' : 'Cart.png';
@@ -829,7 +861,10 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
     let obstacleMeshes = []; let environmentMeshes = []; 
     let isFiery = false; let fireFrames = [], currentFireFrame = 0, fireFrameTimer = 0; const FIRE_FPS = 8; 
     let mixers = []; const velocity = new THREE.Vector3();
-    const keys = { up: false, left: false, down: false, right: false }; let joystickMove = { x: 0, y: 0 };
+    
+    // Joystick State
+    let joystickMove = { y: 0 };
+    const keys = { up: false, down: false };
     
     const interactionPrompt = document.getElementById('interaction-prompt');
     const easterEggModal = document.getElementById('easter-egg-modal');
@@ -842,6 +877,9 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
     let isMoving = false, isModalOpen = false;
     let activePrompt = null; let interactionTimeout = null;
     const clock = new THREE.Clock();
+
+    // Variable to prevent double tap closing the modal instantly
+    let easterEggReadyToClose = false;
 
     window.onload = function() {
         try {
@@ -868,11 +906,10 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
         camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
         camera.setFocalLength(CAMERA_FOCAL_LENGTH);
         
-        const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-        renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: "high-performance" });
+        // Anti-aliasing active on mobile too + High quality pixel ratio
+        renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        const pixelRatio = Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2);
-        renderer.setPixelRatio(pixelRatio);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.outputEncoding = StandardColorSpace;
         container.appendChild(renderer.domElement);
         
@@ -986,31 +1023,89 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
     }
 
     function init3DUI() {
-        document.addEventListener('keydown', (e) => { if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = true; if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = true; });
-        document.addEventListener('keyup', (e) => { if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.up = false; if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.down = false; });
+        // Keyboard: A, D are also Forward/Backward. X axis movement is completely removed.
+        document.addEventListener('keydown', (e) => { 
+            if(['KeyW', 'ArrowUp', 'KeyD', 'ArrowRight'].includes(e.code)) keys.up = true; 
+            if(['KeyS', 'ArrowDown', 'KeyA', 'ArrowLeft'].includes(e.code)) keys.down = true; 
+        });
+        document.addEventListener('keyup', (e) => { 
+            if(['KeyW', 'ArrowUp', 'KeyD', 'ArrowRight'].includes(e.code)) keys.up = false; 
+            if(['KeyS', 'ArrowDown', 'KeyA', 'ArrowLeft'].includes(e.code)) keys.down = false; 
+        });
+
+        // Touch Joystick (Modern Minimal Circular)
+        const joystick = document.getElementById('modern-joystick');
+        const knob = document.getElementById('modern-knob');
+        let joyActive = false;
+        let joyCenterY = 0;
 
         if (('ontouchstart' in window) || navigator.maxTouchPoints > 0) {
-            document.getElementById('joystick-zone').style.display = 'block';
-            const manager = nipplejs.create({ zone: document.getElementById('joystick-zone'), mode: 'static', position: { left: '50%', top: '50%' }, color: '#f1a23a', size: 100, axis: 'y' });
-            manager.on('move', (evt, data) => { joystickMove.x = 0; joystickMove.y = Math.sin(data.angle.radian) * Math.min(data.distance / 50, 1); });
-            manager.on('end', () => { joystickMove.x = 0; joystickMove.y = 0; });
+            joystick.style.display = 'block';
+            
+            joystick.addEventListener('touchstart', (e) => {
+                joyActive = true;
+                const rect = joystick.getBoundingClientRect();
+                joyCenterY = rect.top + rect.height / 2;
+                handleJoyMove(e.touches[0].clientY);
+            }, {passive: false});
+
+            document.addEventListener('touchmove', (e) => {
+                // Prevent overscroll pull-to-refresh on mobile when the game is active
+                if (!isModalOpen && e.cancelable) e.preventDefault();
+                if (!joyActive) return;
+                handleJoyMove(e.touches[0].clientY);
+            }, {passive: false});
+
+            document.addEventListener('touchend', () => {
+                if (!joyActive) return;
+                joyActive = false;
+                knob.style.transform = `translate(-50%, -50%)`;
+                joystickMove.y = 0;
+            });
+
+            function handleJoyMove(clientY) {
+                const maxDist = 32; // Limit knob to stay within the circle beautifully
+                let dy = clientY - joyCenterY;
+                dy = Math.max(-maxDist, Math.min(maxDist, dy));
+                knob.style.transform = `translate(-50%, calc(-50% + ${dy}px))`;
+                joystickMove.y = dy / maxDist; 
+            }
         }
 
         btnOpenShop.addEventListener('click', openStoreUI);
         btnOpenPos.addEventListener('click', openCheckoutUI);
 
         // Easter Egg Logic
-        btnCloseEasterEgg.addEventListener('click', () => { easterEggModal.style.display = 'none'; modalBackdrop.style.display = 'none'; isModalOpen = false; checkInteraction(); });
+        btnCloseEasterEgg.addEventListener('click', (e) => { 
+            // Prevent accidental double taps closing the modal instantly
+            if (!easterEggReadyToClose) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            easterEggModal.style.display = 'none'; 
+            modalBackdrop.style.display = 'none'; 
+            isModalOpen = false; 
+            checkInteraction(); 
+        });
+
         const clickRaycaster = new THREE.Raycaster(); const mouseVector = new THREE.Vector2();
         window.addEventListener('pointerdown', (event) => {
             if (isModalOpen || postMeshes.length === 0 || !camera) return;
-            if (event.target.tagName === 'BUTTON' || event.target.closest('.modern-pill') || event.target.closest('.action-img-btn') || event.target.closest('#joystick-zone') || event.target.closest('.modern-modal') || event.target.closest('#ecommerce-app')) return;
+            if (event.target.tagName === 'BUTTON' || event.target.closest('.modern-pill') || event.target.closest('.action-img-btn') || event.target.closest('#modern-joystick') || event.target.closest('.modern-modal') || event.target.closest('#ecommerce-app')) return;
             mouseVector.x = (event.clientX / window.innerWidth) * 2 - 1; mouseVector.y = -(event.clientY / window.innerHeight) * 2 + 1;
             clickRaycaster.setFromCamera(mouseVector, camera);
             const intersects = clickRaycaster.intersectObjects(postMeshes, true);
             if (intersects.length > 0) {
                 if (cartGroup && cartGroup.position.distanceTo(intersects[0].point) < 25.0) {
-                    interactionPrompt.style.display = 'none'; modalBackdrop.style.display = 'block'; easterEggModal.style.display = 'flex'; isModalOpen = true;
+                    interactionPrompt.style.display = 'none'; 
+                    modalBackdrop.style.display = 'block'; 
+                    easterEggModal.style.display = 'flex'; 
+                    isModalOpen = true;
+                    
+                    // Add delay before the modal can be closed
+                    easterEggReadyToClose = false;
+                    setTimeout(() => { easterEggReadyToClose = true; }, 400);
                 }
             }
         });
@@ -1064,34 +1159,32 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
         }
 
         if (!isModalOpen) {
-            let moveX = 0; let moveZ = 0;
-            if (keys.up) moveZ -= 1; if (keys.down) moveZ += 1;
-            if (keys.left) moveX -= 1; if (keys.right) moveX += 1;
-            if (joystickMove.x !== 0 || joystickMove.y !== 0) { moveX = joystickMove.x; moveZ = -joystickMove.y; }
+            let moveZ = 0;
+            if (keys.up) moveZ -= 1; 
+            if (keys.down) moveZ += 1;
+            if (joystickMove.y !== 0) moveZ = joystickMove.y;
 
-            if (moveX !== 0 || moveZ !== 0) {
-                const length = Math.sqrt(moveX * moveX + moveZ * moveZ);
-                let diff = (Math.atan2(moveX / length, moveZ / length) + Math.PI) - currentSteerAngle;
-                while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2;
-                currentSteerAngle += diff * 10.0 * dt; 
-            }
+            // X movement removed entirely.
+            velocity.x = 0;
 
-            velocity.x += moveX * 50.0 * dt; velocity.z += moveZ * 50.0 * dt;
-            velocity.x -= velocity.x * 5.0 * dt; velocity.z -= velocity.z * 5.0 * dt;
-            if (Math.abs(velocity.x) < 0.1 && moveX === 0) velocity.x = 0;
+            velocity.z += moveZ * 50.0 * dt;
+            velocity.z -= velocity.z * 5.0 * dt; // Friction
+
             if (Math.abs(velocity.z) < 0.1 && moveZ === 0) velocity.z = 0;
+            
+            // Logic to visually rotate the cart when moving backward
+            let targetSteerAngle = currentSteerAngle;
+            if (velocity.z < -0.1) targetSteerAngle = 0; // Forward (Z negative)
+            else if (velocity.z > 0.1) targetSteerAngle = Math.PI; // Backward (Z positive)
+            
+            let diff = targetSteerAngle - currentSteerAngle;
+            while (diff < -Math.PI) diff += Math.PI * 2; 
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            currentSteerAngle += diff * 12.0 * dt;
 
             const rayOrigin = cartGroup.position.clone(); rayOrigin.y += 0.5; 
-            let testPosX = cartGroup.position.x + velocity.x * dt;
             
-            if (Math.abs(velocity.x) > 0.001) {
-                reusableRaycaster.set(rayOrigin, new THREE.Vector3(Math.sign(velocity.x), 0, 0));
-                const hitsX = reusableRaycaster.intersectObjects(obstacleMeshes, true);
-                if (hitsX.length > 0 && hitsX[0].distance < 0.4) { velocity.x = 0; testPosX = cartGroup.position.x; }
-                else if (testPosX < -100 || testPosX > 100) { velocity.x = 0; testPosX = cartGroup.position.x; }
-            }
-            cartGroup.position.x = testPosX;
-
+            // Apply Z-Axis Collision & Limits
             let testPosZ = cartGroup.position.z + velocity.z * dt;
             if (Math.abs(velocity.z) > 0.001) {
                 reusableRaycaster.set(rayOrigin, new THREE.Vector3(0, 0, Math.sign(velocity.z)));
@@ -1106,6 +1199,7 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
             }
             cartGroup.position.z = testPosZ;
 
+            // Follow Ground Height and update rotation
             if (environmentMeshes.length > 0) {
                 if (!cartInitialSnapped) {
                     reusableRaycaster.set(new THREE.Vector3(cartGroup.position.x, 100, cartGroup.position.z), downVector);
@@ -1116,6 +1210,7 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
                             const normalMatrix = new THREE.Matrix3().getNormalMatrix(intersects[0].object.matrixWorld);
                             const worldNormal = intersects[0].face.normal.clone().applyMatrix3(normalMatrix).normalize();
                             targetUp.copy(worldNormal); currentUp.copy(worldNormal); 
+                            
                             const intendedForward = new THREE.Vector3(Math.sin(currentSteerAngle), 0, Math.cos(currentSteerAngle)).normalize();
                             const right = new THREE.Vector3().crossVectors(currentUp, intendedForward).normalize();
                             const actualForward = new THREE.Vector3().crossVectors(right, currentUp).normalize();
@@ -1139,6 +1234,7 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
                     }
                     cartGroup.position.y += (targetCartY - cartGroup.position.y) * 10.0 * dt;
                     currentUp.lerp(targetUp, 8.0 * dt).normalize();
+                    
                     const intendedForward = new THREE.Vector3(Math.sin(currentSteerAngle), 0, Math.cos(currentSteerAngle)).normalize();
                     const right = new THREE.Vector3().crossVectors(currentUp, intendedForward).normalize();
                     const actualForward = new THREE.Vector3().crossVectors(right, currentUp).normalize();
@@ -1146,19 +1242,22 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
                 }
             }
 
-            if (velocity.length() > 0.01 && cartWheels.length > 0) {
-                const moveDirectionSign = velocity.clone().normalize().dot(new THREE.Vector3(Math.sin(currentSteerAngle), 0, Math.cos(currentSteerAngle))) >= 0 ? 1 : -1;
-                cartWheels.forEach(wheel => wheel.rotateX(-(velocity.length() * dt / WHEEL_RADIUS) * moveDirectionSign));
+            // Animate Wheels Based on Velocity Direction
+            if (Math.abs(velocity.z) > 0.01 && cartWheels.length > 0) {
+                // Since mesh visually rotates 180 degrees when going backward,
+                // the wheels should always spin forward relative to the mesh itself.
+                cartWheels.forEach(wheel => wheel.rotateX(-(Math.abs(velocity.z) * dt / WHEEL_RADIUS)));
             }
 
-            if (velocity.lengthSq() > 0.5) { if (!isMoving) { cartSqueakAudio.play().catch(e => {}); isMoving = true; } } 
+            if (Math.abs(velocity.z) > 0.5) { if (!isMoving) { cartSqueakAudio.play().catch(e => {}); isMoving = true; } } 
             else { if (isMoving) { cartSqueakAudio.pause(); isMoving = false; } }
         } else {
-            velocity.x -= velocity.x * 10.0 * dt; velocity.z -= velocity.z * 10.0 * dt;
-            cartGroup.position.x += velocity.x * dt; cartGroup.position.z += velocity.z * dt;
+            velocity.z -= velocity.z * 10.0 * dt;
+            cartGroup.position.z += velocity.z * dt;
             if (isMoving) { cartSqueakAudio.pause(); isMoving = false; }
         }
 
+        // Camera Logic
         if (!isCameraInitialized && cartGroup) { cameraTargetPos.copy(cartGroup.position); isCameraInitialized = true; }
         let idealTarget = new THREE.Vector3();
         if (cartGroup.position.z >= currentCameraLimitMinZ && cartGroup.position.z <= CAMERA_LIMIT_MAX_Z) { idealTarget.copy(cartGroup.position); } 
