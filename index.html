@@ -821,13 +821,8 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
             
             // بخش کلیک تغییر کرده تا قفل صدای آیفون باز بشه
             btn.onclick = () => {
-                // 1. باز کردن قفل صدا
-                cartSqueakAudio.play().then(() => {
-                    cartSqueakAudio.pause();
-                    cartSqueakAudio.currentTime = 0;
-                }).catch(err => {
-                    console.warn("Audio unlock failed:", err);
-                });
+                
+                
     
                 // 2. بقیه کدهای استارت
                 isStartClicked = true; 
@@ -885,8 +880,6 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
     const btnOpenShop = document.getElementById('btn-open-shop');
     const btnOpenPos = document.getElementById('btn-open-pos');
     const btnCloseEasterEgg = document.getElementById('btn-close-easter-egg');
-    const cartSqueakAudio = document.getElementById('cart-squeak');
-    cartSqueakAudio.volume = 0.8;
     let isMoving = false, isModalOpen = false;
     let activePrompt = null; let interactionTimeout = null;
     const clock = new THREE.Clock();
@@ -1262,12 +1255,11 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
                 cartWheels.forEach(wheel => wheel.rotateX((Math.abs(velocity.z) * dt / WHEEL_RADIUS)));
             }
 
-            if (Math.abs(velocity.z) > 0.5) { if (!isMoving) { cartSqueakAudio.play().catch(e => {}); isMoving = true; } } 
-            else { if (isMoving) { cartSqueakAudio.pause(); isMoving = false; } }
+            
         } else {
             velocity.z -= velocity.z * 10.0 * dt;
             cartGroup.position.z += velocity.z * dt;
-            if (isMoving) { cartSqueakAudio.pause(); isMoving = false; }
+            isMoving = false;
         }
 
         // Camera Logic
