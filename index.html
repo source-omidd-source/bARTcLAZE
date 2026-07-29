@@ -1281,12 +1281,7 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
 
         checkInteraction();
         renderer.render(scene, camera);
-        // این کد هر ۱ ثانیه یک‌بار اطلاعات رندر را در کنسول چاپ می‌کند
-if (Math.floor(clock.getElapsedTime()) % 1 === 0) {
-    console.log("Draw Calls:", renderer.info.render.calls);
-    console.log("Triangles:", renderer.info.render.triangles);
-    console.log("Geometries in Memory:", renderer.info.memory.geometries);
-}
+
     }
 
     function onWindowResize() {
