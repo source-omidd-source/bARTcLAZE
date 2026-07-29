@@ -964,7 +964,9 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
                     const isGrass = name.includes('grass') || name.includes('bush') || name.includes('plant') || name.includes('flower') || name.includes('weed') || name.includes('rock') || name.includes('stone');
                     if(name.includes('1tree') || name.includes('wall') || name.includes('collider') || name.includes('obstacle') || name.includes('bound')) {
                         obstacleMeshes.push(child); if(name.includes('wall') || name.includes('collider') || name.includes('bound')) child.visible = false;
-                    } else if (!isGrass) { environmentMeshes.push(child); }
+                    } else if (name.includes('street') || name.includes('ground')) { 
+                        environmentMeshes.push(child); 
+                    }
                 }
             });
 
@@ -982,7 +984,7 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
                             isPropObstacle = true; if(name.includes('wall') || name.includes('collider')) child.visible = false;
                         }
                         const isGrass = name.includes('grass') || name.includes('bush') || name.includes('plant') || name.includes('flower') || name.includes('weed') || name.includes('rock') || name.includes('stone');
-                        if (isPropObstacle && !isGrass) obstacleMeshes.push(child); 
+                    
                     }
                 });
                 propsLoaded = true;
@@ -1193,10 +1195,14 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
             // Apply Z-Axis Collision & Limits
             let testPosZ = cartGroup.position.z + velocity.z * dt;
             if (Math.abs(velocity.z) > 0.001) {
-                reusableRaycaster.set(rayOrigin, new THREE.Vector3(0, 0, Math.sign(velocity.z)));
-                const hitsZ = reusableRaycaster.intersectObjects(obstacleMeshes, true);
-                if (hitsZ.length > 0 && hitsZ[0].distance < 0.4) { velocity.z = 0; testPosZ = cartGroup.position.z; }
-                else if (testPosZ < -100 || testPosZ > 100) { velocity.z = 0; testPosZ = cartGroup.position.z; }
+                // به جای محاسبه برخورد با تمام اجسام محیط، فقط از محدودیت مختصاتی استفاده کنید
+                const MIN_Z = -100; // انتهای جاده
+                const MAX_Z = 100;  // ابتدای جاده
+                
+                if (testPosZ < MIN_Z || testPosZ > MAX_Z) { 
+                    velocity.z = 0; 
+                    testPosZ = cartGroup.position.z; 
+                }
             }
             if (posMachine) {
                 const pPos = new THREE.Vector3(); posMachine.getWorldPosition(pPos);
@@ -1275,6 +1281,12 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
 
         checkInteraction();
         renderer.render(scene, camera);
+        // این کد هر ۱ ثانیه یک‌بار اطلاعات رندر را در کنسول چاپ می‌کند
+if (Math.floor(clock.getElapsedTime()) % 1 === 0) {
+    console.log("Draw Calls:", renderer.info.render.calls);
+    console.log("Triangles:", renderer.info.render.triangles);
+    console.log("Geometries in Memory:", renderer.info.memory.geometries);
+}
     }
 
     function onWindowResize() {
