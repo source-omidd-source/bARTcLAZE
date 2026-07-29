@@ -1032,7 +1032,7 @@ nav.top a:hover, nav.top a.on { color: var(--ink); background: var(--soft); }
         if (posMachine) { const pPos = new THREE.Vector3(); posMachine.getWorldPosition(pPos); distPos = cartGroup.position.distanceTo(pPos); }
         
         let newPrompt = null;
-        if (distRack < 12) newPrompt = 'shop'; else if (distPos < 7) newPrompt = 'pos';
+        if (distRack < 11) newPrompt = 'shop'; else if (distPos < 7) newPrompt = 'pos';
         
         if (newPrompt !== activePrompt) {
             if (interactionTimeout) { clearTimeout(interactionTimeout); interactionTimeout = null; }
